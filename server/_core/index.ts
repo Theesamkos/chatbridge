@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { sdk } from "./sdk";
+import { streamHandler } from "../routes/stream";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,6 +37,11 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
+  // SSE streaming endpoint — must be registered BEFORE tRPC middleware (Decision 4).
+  // Implementation in server/routes/stream.ts.
+  app.post("/api/stream", streamHandler);
+
   // tRPC API
   app.use(
     "/api/trpc",

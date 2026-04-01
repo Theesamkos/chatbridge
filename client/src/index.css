@@ -174,4 +174,25 @@
       max-width: 1280px; /* Standard content width */
     }
   }
+
+  /* Rule 42: streaming cursor — pure CSS animation, no JS timers.
+     Rule 41: animation disabled when user prefers reduced motion. */
+  @keyframes streaming-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  .streaming-cursor::after {
+    content: "▋";
+    display: inline-block;
+    animation: streaming-blink 1s step-start infinite;
+    margin-left: 1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .streaming-cursor::after {
+      animation: none;
+      opacity: 1;
+    }
+  }
 }

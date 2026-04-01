@@ -56,6 +56,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
+      // Owner account is always admin regardless of DB default
       values.role = 'admin';
       updateSet.role = 'admin';
     }
