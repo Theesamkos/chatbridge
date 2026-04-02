@@ -194,3 +194,7 @@
 ## Chess Illegal Move + Empty Bubble Fixes
 - [x] Fix illegal move handling: AI must explain the illegal move and ask for a valid one (not go silent)
 - [x] Fix empty AI bubble: suppress blank/whitespace-only AI messages in the chat UI
+
+## Production Bug: AI Silence + "1 error" Toast (Timeline + Chess)
+- [ ] Diagnose "1 error" toast: find exact server/client error causing AI to not respond
+- [ ] Fix the root cause and verify full chat→plugin→AI response flow works end-to-end

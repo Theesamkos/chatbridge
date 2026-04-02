@@ -29,8 +29,8 @@ const fenString = z
   );
 
 export const chessStateSchema = z.object({
-  fen: fenString,
-  status: z.enum(["idle", "active", "check", "checkmate", "stalemate", "draw"]),
+  fen: fenString.optional(),
+  status: z.enum(["idle", "active", "check", "checkmate", "stalemate", "draw"]).optional(),
   lastMove: z
     .object({
       from: z.string().max(2),
@@ -61,12 +61,12 @@ const timelineEventSchema = z.object({
 });
 
 export const timelineStateSchema = z.object({
-  topic: z.string().max(200),
-  events: z.array(timelineEventSchema).max(20),
+  topic: z.string().max(200).optional(),
+  events: z.array(timelineEventSchema).max(20).optional(),
   correctOrder: z.array(z.string().max(64)).max(20).optional(),
-  attempts: z.number().int().min(0).max(100),
+  attempts: z.number().int().min(0).max(100).optional(),
   score: z.number().min(0).max(100).optional(),
-  completed: z.boolean(),
+  completed: z.boolean().optional(),
   startedAt: z.number().optional(),
   completedAt: z.number().optional(),
 });
@@ -99,11 +99,11 @@ const artifactSchema = z.object({
 });
 
 export const artifactStudioStateSchema = z.object({
-  artifact: artifactSchema.nullable(),
-  step: z.enum(["discover", "inspect", "investigate", "conclude"]),
-  investigation: investigationSchema,
+  artifact: artifactSchema.nullable().optional(),
+  step: z.enum(["discover", "inspect", "investigate", "conclude"]).optional(),
+  investigation: investigationSchema.optional(),
   score: z.number().min(0).max(100).optional(),
-  completed: z.boolean(),
+  completed: z.boolean().optional(),
   startedAt: z.number().optional(),
   completedAt: z.number().optional(),
   apiSource: z.enum(["smithsonian", "loc", "cache", "none"]).optional(),
