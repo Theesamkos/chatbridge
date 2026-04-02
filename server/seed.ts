@@ -100,7 +100,7 @@ const plugins: InsertPluginSchema[] = [
   {
     id: "timeline",
     name: "Timeline Builder",
-    description: "Historical event ordering activity",
+    description: "Drag-and-drop historical event ordering activity with deterministic validation",
     origin: "http://localhost:3000",
     iframeUrl: "/apps/timeline/index.html",
     status: "active",
@@ -109,14 +109,14 @@ const plugins: InsertPluginSchema[] = [
       {
         name: "load_timeline",
         description:
-          "Load historical events into the timeline app for the student to arrange in chronological order. Call this to begin or reset a timeline activity. Provide a topic name (e.g. 'American Civil War') — the app will generate the event set for that topic.",
+          "Load a set of historical events into the Timeline Builder for the student to arrange in chronological order. Call this when the student wants to practice a history topic. Available topics: 'American Civil War', 'American Revolution', 'Ancient Rome', 'World War II', 'Space Race', 'French Revolution', 'Cold War', 'Industrial Revolution'. The app shuffles the events so the student must figure out the correct order.",
         parameters: {
           type: "object",
           properties: {
             topic: {
               type: "string",
               description:
-                "Name of the historical topic to build a timeline for, e.g. 'American Civil War', 'French Revolution', 'Space Race'.",
+                "Exact topic name to load, e.g. 'American Civil War', 'Space Race', 'French Revolution'. Must match one of the available topics exactly.",
             },
           },
           required: ["topic"],
@@ -125,7 +125,27 @@ const plugins: InsertPluginSchema[] = [
       {
         name: "validate_arrangement",
         description:
-          "Ask the timeline app to check whether the student's current event arrangement is chronologically correct. Call this when the student says they are finished arranging events or asks for feedback. Takes no arguments — the app evaluates its own current state.",
+          "Trigger deterministic validation of the student's current event arrangement. Call this when the student says they are done arranging, asks for feedback, or wants to check their answer. The app compares the student's order against the correct chronological order and returns a structured result with per-item correctness, score, and completion status. This does NOT use the LLM — it is pure application logic.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: "get_state",
+        description:
+          "Get the current state of the Timeline Builder activity. Call this to check what topic is loaded, how many events the student has arranged, whether they have submitted, and their current score. Use this before giving coaching advice so you have accurate context.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: "reset_timeline",
+        description:
+          "Reset the current timeline activity to a new shuffled order, clearing any previous submission and score. Call this when the student wants to try the same topic again from scratch, or when you want to give them another attempt after a poor score.",
         parameters: {
           type: "object",
           properties: {},

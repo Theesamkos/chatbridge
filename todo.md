@@ -110,3 +110,19 @@
 - [x] Run full test suite — 102/102 passing (up from 96)
 - [x] Save Phase 3 checkpoint (6dad817d)
 - [x] Write and deliver Phase 3 implementation report
+
+## Phase 4: Timeline Builder Plugin (COMPLETED)
+
+- [x] Rebuilt timeline iframe: production-grade dark UI, drag-and-drop with position numbers, attempt counter, score pips, result overlay
+- [x] 8 history topics with 6 events each (48 events total, all with year + description)
+- [x] Deterministic validation: pure JS, no LLM, per-item correctness + score + status
+- [x] All 4 tools implemented: load_timeline, validate_arrangement, get_state, reset_timeline
+- [x] Full plugin lifecycle: INIT → PLUGIN_READY → STATE_UPDATE → PLUGIN_COMPLETE
+- [x] State restoration on INIT (topic, orderedEventIds, submitted, attemptCount)
+- [x] Seed.ts updated: timeline plugin now has all 4 tool schemas with rich descriptions
+- [x] PluginPicker icon/color mapping fixed: 'timeline-builder' → 'timeline'
+- [x] contextAssembly.ts: timeline system prompt + coaching instructions injected
+- [x] contextAssembly.ts: completion coaching for perfect/partial/poor scores
+- [x] 9 new timeline tests in contextAssembly.test.ts
+- [x] Full test suite: 111/111 passing (up from 102)
+- [x] Seed applied to database: timeline plugin updated with 4 tools

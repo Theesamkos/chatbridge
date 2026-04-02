@@ -27,14 +27,14 @@ interface PluginPickerProps {
 
 const PLUGIN_ICONS: Record<string, string> = {
   chess: "♟",
-  "timeline-builder": "📅",
+  timeline: "📅",
   "artifact-studio": "🏛",
   "mock-plugin": "🧪",
 };
 
 const PLUGIN_COLORS: Record<string, string> = {
   chess: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30",
-  "timeline-builder": "from-blue-500/20 to-blue-600/10 border-blue-500/30",
+  timeline: "from-blue-500/20 to-blue-600/10 border-blue-500/30",
   "artifact-studio": "from-amber-500/20 to-amber-600/10 border-amber-500/30",
   "mock-plugin": "from-purple-500/20 to-purple-600/10 border-purple-500/30",
 };

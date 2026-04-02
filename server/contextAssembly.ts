@@ -126,6 +126,26 @@ export async function assembleContext(
       "9. Play principled chess: control the center, develop pieces, protect the king.";
   }
 
+  // Timeline plugin: inject coaching instructions
+  if (activePluginId === "timeline") {
+    systemMessage +=
+      "\n\n## TIMELINE BUILDER PLUGIN — YOU ARE THE HISTORY TUTOR\n" +
+      "The student is using a drag-and-drop timeline activity to practice chronological ordering of historical events.\n\n" +
+      "MANDATORY BEHAVIOR:\n" +
+      "1. STARTING: When the student wants to practice a history topic, call load_timeline with the exact topic name.\n" +
+      "   Available topics: 'American Civil War', 'American Revolution', 'Ancient Rome', 'World War II', 'Space Race', 'French Revolution', 'Cold War', 'Industrial Revolution'.\n" +
+      "   If the student's topic is close but not exact, pick the closest match and call load_timeline.\n" +
+      "2. CHECKING ANSWERS: When the student says they are done, finished, or wants to check their answer, call validate_arrangement immediately.\n" +
+      "3. COACHING: After validation, give specific, encouraging feedback:\n" +
+      "   - For a perfect score: celebrate and explain why the correct order makes historical sense.\n" +
+      "   - For partial credit: identify which events were misplaced and explain the correct sequence with historical context.\n" +
+      "   - For a poor score: be encouraging, briefly explain the correct chronological order, and offer to reset for another attempt.\n" +
+      "4. CHECKING STATE: Use get_state to see what topic is loaded and the student's current progress before giving advice.\n" +
+      "5. RESETTING: If the student wants to try again or you want to give them another attempt, call reset_timeline.\n" +
+      "6. NEVER guess or make up event dates — the app handles all validation deterministically.\n" +
+      "7. Keep explanations concise and age-appropriate for K-12 students.";
+  }
+
   if (activePluginId && pluginState !== null) {
     const pluginSchema = await getPluginSchema(activePluginId);
     const pluginName = pluginSchema?.name ?? activePluginId;
@@ -143,6 +163,29 @@ export async function assembleContext(
         "(2) any tactical or strategic ideas it creates, (3) what the opponent's best response might be. " +
         "Use simple language appropriate for a student learner. Encourage the student and celebrate good moves. " +
         "Point out mistakes kindly and suggest improvements. Reference the board position by square names (e.g. e4, d5).";
+    }
+
+    // Timeline completion coaching (Rule 12 equivalent for timeline)
+    if (
+      activePluginId === "timeline" &&
+      (pluginState as Record<string, unknown>).completionStatus === "TIMELINE_COMPLETE"
+    ) {
+      const score = (pluginState as Record<string, unknown>).score as number | null;
+      const total = (pluginState as Record<string, unknown>).total as number | null;
+      const topic = (pluginState as Record<string, unknown>).topic as string | null;
+      if (score !== null && total !== null) {
+        const pct = score / total;
+        if (pct === 1) {
+          systemMessage +=
+            `\n\nThe student just completed the ${topic ?? ""} timeline with a PERFECT score (${score}/${total}). ` +
+            "Celebrate their achievement enthusiastically and reinforce the historical significance of the correct order.";
+        } else {
+          systemMessage +=
+            `\n\nThe student just completed the ${topic ?? ""} timeline with a score of ${score}/${total}. ` +
+            "Give specific, encouraging feedback about which events were in the wrong position and why the correct chronological order matters historically. " +
+            "Offer to reset for another attempt if they scored below 80%.";
+        }
+      }
     }
   }
 
