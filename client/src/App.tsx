@@ -7,7 +7,6 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import Chat from "./pages/Chat";
 import Home from "./pages/Home";
-import StreamTest from "./pages/StreamTest";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import StudentSessions from "./pages/teacher/StudentSessions";
 import ConversationLog from "./pages/teacher/ConversationLog";
@@ -78,7 +77,6 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/chat"} component={Chat} />
       <Route path={"/portfolio"} component={InvestigationPortfolio} />
-      <Route path={"/stream-test"} component={StreamTest} />
 
       {/* Teacher routes — role: teacher | admin */}
       <Route path={"/teacher"}>

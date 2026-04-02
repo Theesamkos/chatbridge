@@ -162,12 +162,21 @@
 
 ## Phase 6: Safety, Moderation, Monitoring & Resilience Hardening
 
-- [ ] Pre-LLM safety inspection layer (user input, plugin state, tool results, injection detection)
-- [ ] Post-LLM output moderation layer (policy scanner, PII detector, allow/block/sanitize, event logging)
-- [ ] Plugin state schema validators (chess, timeline, artifact-studio) + STATE_UPDATE/TOOL_RESULT hardening
-- [ ] Plugin circuit breaker + session freeze/escalation logic
-- [ ] Structured audit logging system (all critical safety/lifecycle events)
-- [ ] Rate limiting middleware (chat messages, plugin state updates, tool invocation loops)
-- [ ] Degraded-mode resilience (fallback chains, preserved chat continuity, safe failure messages)
-- [ ] Premium failure UX (polished error/degraded/freeze states in PluginContainer and Chat)
-- [ ] Safety/resilience tests + all 122 existing tests passing
+- [x] Pre-LLM safety inspection layer (user input, plugin state, tool results, injection detection)
+- [x] Post-LLM output moderation layer (policy scanner, PII detector, allow/block/sanitize, event logging)
+- [x] Plugin state schema validators (chess, timeline, artifact-studio) + STATE_UPDATE/TOOL_RESULT hardening
+- [x] Plugin circuit breaker + session freeze/escalation logic
+- [x] Structured audit logging system (all critical safety/lifecycle events)
+- [x] Rate limiting middleware (chat messages, plugin state updates, tool invocation loops)
+- [x] Degraded-mode resilience (fallback chains, preserved chat continuity, safe failure messages)
+- [x] Premium failure UX (polished error/degraded/freeze states in PluginContainer and Chat)
+- [x] Safety/resilience tests + all 152 tests passing (30 new safety tests added)
+
+## Phase 7: Integration, Testing, Deployment Hardening & Final Readiness
+
+- [ ] Deep system audit: trace all critical flows, identify inconsistencies
+- [ ] Fix all identified issues: contract gaps, state continuity, error handling, dead code
+- [ ] Performance optimization: re-renders, streaming, plugin load times
+- [ ] Final test sweep: 152+ tests passing, 0 TS errors
+- [ ] Deployment hardening: build process, env vars, no secrets exposed
+- [ ] Final readiness report delivered

@@ -462,7 +462,7 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
     payload: {
       inputTokens:  totalInputTokens,
       outputTokens: totalOutputTokens,
-      model:        "claude-sonnet-4-5",
+      model:        "forge-default",
       pluginId:     context.pluginId ?? null,
       conversationId,
     },

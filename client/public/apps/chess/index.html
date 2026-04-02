@@ -596,7 +596,6 @@ window.addEventListener('message', function(event) {
   if (msg.type === 'INIT') {
     registeredOrigin = event.origin;
     sessionId = msg.sessionId; pluginId = msg.pluginId || 'chess'; conversationId = msg.conversationId;
-    console.log('[Chess] INIT received. event.origin:', event.origin, 'sessionId:', sessionId);
     if (msg.restoredState && msg.restoredState.fen && isValidFen(msg.restoredState.fen)) {
       try {
         chess = new Chess(msg.restoredState.fen);
@@ -606,9 +605,7 @@ window.addEventListener('message', function(event) {
       } catch(e) { chess = new Chess(); }
     } else { chess = new Chess(); }
     renderBoard(); updateInfo();
-    console.log('[Chess] Sending PLUGIN_READY. registeredOrigin:', registeredOrigin, 'sessionId:', sessionId);
     sendMsg({ type:'PLUGIN_READY', version:1, sessionId, pluginId });
-    console.log('[Chess] PLUGIN_READY sent.');
     return;
   }
   if (!registeredOrigin || event.origin !== registeredOrigin) return;

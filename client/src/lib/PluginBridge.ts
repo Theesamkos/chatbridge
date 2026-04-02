@@ -143,7 +143,6 @@ export class PluginBridge {
     // We accept this as valid for self-hosted plugins — session/plugin ID
     // validation below provides the security boundary.
     const isSandboxedNullOrigin = event.origin === "null";
-    console.log('[PluginBridge] recv msg type:', (event.data as any)?.type, 'origin:', event.origin, 'isSandboxedNull:', isSandboxedNullOrigin, 'registeredOrigin:', this.registeredOrigin, 'mySessionId:', this.sessionId, 'msgSessionId:', (event.data as any)?.sessionId);
     if (!isSandboxedNullOrigin && event.origin !== this.registeredOrigin) {
       if (event.origin !== window.location.origin) {
         // Log protocol violation (fire-and-forget, best-effort)
@@ -217,7 +216,6 @@ export class PluginBridge {
     // the target — the iframe is sandboxed so there is no credential leakage risk.
     // External plugins (non-self-hosted) still use the registered origin.
     const targetOrigin = this.registeredOrigin === window.location.origin ? "*" : this.registeredOrigin;
-    console.log('[PluginBridge] post', msg.type, 'targetOrigin:', targetOrigin, 'contentWindow:', !!this.iframe.contentWindow);
     this.iframe.contentWindow?.postMessage(msg, targetOrigin);
   }
 

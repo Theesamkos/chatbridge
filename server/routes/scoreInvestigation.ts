@@ -69,14 +69,20 @@ export async function scoreInvestigationHandler(req: Request, res: Response): Pr
   const state = (finalState ?? {}) as Record<string, unknown>;
   const artifact = (state.selectedArtifact ?? {}) as Record<string, unknown>;
 
+  // Support new state model (observations/evidence/interpretation/hypothesis)
+  // with backward-compat fallback to legacy keys (inquiryQuestion/conclusion/annotations)
+  const observations = (state.observations as string) || (state.inquiryQuestion as string) || "";
+  const evidence = (state.evidence as string) || "";
+  const interpretation = (state.interpretation as string) || "";
+  const hypothesis = (state.hypothesis as string) || (state.conclusion as string) || "";
+
   const investigationText = [
     `Artifact: ${artifact.title ?? "Unknown"}`,
     summary ? `Summary: ${summary}` : "",
-    state.inquiryQuestion ? `Inquiry question: ${state.inquiryQuestion}` : "",
-    state.conclusion ? `Conclusion: ${state.conclusion}` : "",
-    state.annotations
-      ? `Annotations: ${JSON.stringify(state.annotations).slice(0, 2000)}`
-      : "",
+    observations ? `Observations: ${observations}` : "",
+    evidence ? `Evidence: ${evidence}` : "",
+    interpretation ? `Interpretation: ${interpretation}` : "",
+    hypothesis ? `Hypothesis / Conclusion: ${hypothesis}` : "",
   ]
     .filter(Boolean)
     .join("\n");

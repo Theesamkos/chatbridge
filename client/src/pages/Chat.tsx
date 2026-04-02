@@ -31,7 +31,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import {
+import React, {
   Suspense,
   startTransition,
   useCallback,
@@ -74,7 +74,7 @@ function relativeTime(date: string | Date): string {
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: ChatMessage }) {
   const [copied, setCopied] = useState(false);
   const [hovering, setHovering] = useState(false);
 
@@ -151,11 +151,11 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   }
 
   return null;
-}
+});
 
 // ─── Tool indicator ────────────────────────────────────────────────────────────
 
-function ToolIndicator({ pluginName }: { pluginName: string }) {
+const ToolIndicator = React.memo(function ToolIndicator({ pluginName }: { pluginName: string }) {
   return (
     <div className="flex items-start gap-3 px-4 sm:px-6 animate-fade-in">
       <div className="shrink-0 mt-1 h-7 w-7 rounded-full bg-primary/12 border border-primary/20 flex items-center justify-center shadow-sm">
@@ -167,7 +167,7 @@ function ToolIndicator({ pluginName }: { pluginName: string }) {
       </div>
     </div>
   );
-}
+});
 
 // ─── Plugin skeleton ──────────────────────────────────────────────────────────
 
@@ -257,7 +257,7 @@ interface SidebarContentProps {
   onClose?: () => void;
 }
 
-function SidebarContents({
+const SidebarContents = React.memo(function SidebarContents({
   convList, loading, activeConvId, onSelect, onNew, isCreating, user, onNavigate, onClose,
 }: SidebarContentProps) {
   const [search, setSearch] = useState("");
@@ -375,9 +375,9 @@ function SidebarContents({
       </div>
     </div>
   );
-}
+});
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main component ─────────────────────────────────────────────
 
 export default function Chat() {
   const { user } = useAuth({ redirectOnUnauthenticated: true });
