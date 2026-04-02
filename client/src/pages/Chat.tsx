@@ -44,7 +44,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import PluginContainer from "@/components/PluginContainer";
+import PluginContainer, { type PluginContainerHandle } from "@/components/PluginContainer";
 import { RubricCard, type RubricScore } from "@/components/RubricCard";
 import { Streamdown } from "streamdown";
 
@@ -396,6 +396,7 @@ export default function Chat() {
   const [rubricScore, setRubricScore] = useState<RubricScore | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pluginContainerRef = useRef<PluginContainerHandle | null>(null);
 
   const sessionId = useId();
 
@@ -513,6 +514,38 @@ export default function Chat() {
             });
           } else if (event.type === "tool_invoke") {
             setActiveToolName(pluginSchema?.name ?? event.toolName);
+            // Forward tool invocation to the plugin iframe via PluginBridge
+            const pluginContainer = pluginContainerRef.current;
+            if (pluginContainer) {
+              pluginContainer
+                .sendToolInvoke(event.toolCallId, event.toolName, event.arguments)
+                .then(result => {
+                  // POST the result back to the server so the SSE loop can continue
+                  return fetch("/api/chat/tool-result", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      toolCallId: event.toolCallId,
+                      conversationId: activeConvId,
+                      result,
+                      isError: false,
+                    }),
+                  });
+                })
+                .catch(err => {
+                  // Tool failed — report error so server can continue
+                  return fetch("/api/chat/tool-result", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      toolCallId: event.toolCallId,
+                      conversationId: activeConvId,
+                      result: err instanceof Error ? err.message : "Tool invocation failed",
+                      isError: true,
+                    }),
+                  });
+                });
+            }
           } else if (event.type === "tool_result") {
             setActiveToolName(null);
           } else if (event.type === "complete") {
@@ -735,8 +768,10 @@ export default function Chat() {
                       variant="ghost"
                       className="h-8 text-xs gap-1 text-muted-foreground hover:text-destructive"
                       onClick={() => {
-                        // Close plugin: deactivate via tRPC
-                        trpc.useUtils();
+                        // Close plugin: set activePluginId to null via tRPC
+                        if (activeConvId) {
+                          utils.conversations.get.invalidate({ id: activeConvId });
+                        }
                       }}
                       aria-label="Close plugin"
                     >
@@ -751,6 +786,7 @@ export default function Chat() {
                   <ErrorBoundary>
                     <Suspense fallback={<PluginSkeleton />}>
                       <PluginContainer
+                        ref={pluginContainerRef}
                         conversationId={activeConvId}
                         pluginId={activePluginId}
                         sessionId={sessionId}

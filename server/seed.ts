@@ -20,7 +20,7 @@ const plugins: InsertPluginSchema[] = [
     origin: "http://localhost:3000",
     iframeUrl: "/apps/chess/index.html",
     status: "active",
-    allowedRoles: ["student", "teacher"],
+    allowedRoles: ["student", "teacher", "admin"],
     toolSchemas: [
       {
         name: "make_move",
@@ -94,7 +94,7 @@ const plugins: InsertPluginSchema[] = [
     origin: "http://localhost:3000",
     iframeUrl: "/apps/timeline/index.html",
     status: "active",
-    allowedRoles: ["student", "teacher"],
+    allowedRoles: ["student", "teacher", "admin"],
     toolSchemas: [
       {
         name: "load_timeline",
@@ -130,13 +130,13 @@ const plugins: InsertPluginSchema[] = [
 
   // ─── Artifact Investigation Studio ─────────────────────────────────────────
   {
-    id: "artifact_studio",
+    id: "artifact-studio",
     name: "Artifact Investigation Studio",
     description: "Guided artifact-based historical inquiry",
     origin: "http://localhost:3000",
     iframeUrl: "/apps/artifact-studio/index.html",
     status: "active",
-    allowedRoles: ["student", "teacher"],
+    allowedRoles: ["student", "teacher", "admin"],
     toolSchemas: [
       {
         name: "search_artifacts",

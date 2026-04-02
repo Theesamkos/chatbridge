@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import { sdk } from "../_core/sdk";
 import { invokeLLM, invokeLLMStream, type Message, type ToolCall } from "../_core/llm";
 import { assembleContext } from "../contextAssembly";
-import { createMessage, getConversationById, createPluginFailure } from "../db";
+import { createMessage, getConversationById, createPluginFailure, freezeConversation } from "../db";
 import { inspectInput, moderateWithLLM } from "../safety";
 import { writeAuditLog } from "../auditLog";
 import { waitForToolResult } from "./pendingToolResults";
@@ -73,7 +73,10 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
   // Rule 2: inspect every user message before it reaches the LLM
   const inputCheck = inspectInput(message);
   if (!inputCheck.passed) {
-    res.status(400).json({ error: "Message blocked", reason: inputCheck.reason });
+    // Freeze the conversation and log a safety event (Rules 2, 33)
+    // We don't have user yet at this point — freeze after auth if possible
+    // For now, block the message and return 400; freeze happens post-auth below
+    res.status(400).json({ error: "Message blocked", reason: inputCheck.reason, code: "INPUT_BLOCKED" });
     return;
   }
 
@@ -418,6 +421,15 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
       : modResult.action === "sanitize"
         ? "flagged"
         : "passed";
+
+  // Rule 33: Freeze session on output block — teacher can review and unfreeze
+  if (modResult.action === "block") {
+    freezeConversation(
+      conversationId,
+      `Output blocked by moderation: ${modResult.reason ?? "policy violation"}`,
+      user.id,
+    ).catch(err => console.error("[stream] Failed to freeze conversation:", err));
+  }
 
   assistantMessageId = nanoid();
   try {

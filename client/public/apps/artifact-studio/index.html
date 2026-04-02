@@ -1057,19 +1057,21 @@
   // API calls
   // ──────────────────────────────────────────────
   async function searchArtifacts(query) {
-    const url = `/api/trpc/artifacts.search?input=${encodeURIComponent(JSON.stringify({ query, page: 0 }))}`;
+    const url = `/api/trpc/artifacts.search?input=${encodeURIComponent(JSON.stringify({ json: { query, page: 0 } }))}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
-    return json.result?.data ?? { artifacts: [], totalCount: 0 };
+    // tRPC v11 wraps result in { result: { data: { json: ... } } }
+    return json.result?.data?.json ?? json.result?.data ?? { artifacts: [], totalCount: 0 };
   }
 
   async function getArtifactDetail(id, source) {
-    const url = `/api/trpc/artifacts.getDetail?input=${encodeURIComponent(JSON.stringify({ id, source }))}`;
+    const url = `/api/trpc/artifacts.getDetail?input=${encodeURIComponent(JSON.stringify({ json: { id, source } }))}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
-    return json.result?.data ?? null;
+    // tRPC v11 wraps result in { result: { data: { json: ... } } }
+    return json.result?.data?.json ?? json.result?.data ?? null;
   }
 
   // ──────────────────────────────────────────────
