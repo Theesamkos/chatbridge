@@ -145,7 +145,8 @@ describe("assembleContext", () => {
     expect(result.pluginId).toBe("chess");
     expect(result.pluginState).not.toBeNull();
     expect(result.systemMessage).toContain("Chess");
-    expect(result.systemMessage).toContain("Current state:");
+    // Plugin state is injected as "Current Chess state: {...}"
+    expect(result.systemMessage).toContain("Current Chess state:");
     expect(result.tools).toBeDefined();
     expect(result.tools?.length).toBeGreaterThan(0);
   });
@@ -244,9 +245,9 @@ describe("assembleContext — chess plugin integration", () => {
 
     const result = await assembleContext("conv-1", 42);
 
-    expect(result.systemMessage).toContain("NEVER invent or hallucinate chess moves");
-    expect(result.systemMessage).toContain("UCI notation ONLY");
-    expect(result.systemMessage).toContain("FEN string");
+    expect(result.systemMessage).toContain("YOU ARE THE AI OPPONENT");
+    expect(result.systemMessage).toContain("UCI notation");
+    expect(result.systemMessage).toContain("make_move");
   });
 
   it("injects Teach Me Mode coaching prompt when teachMeMode is true", async () => {
@@ -280,7 +281,7 @@ describe("assembleContext — chess plugin integration", () => {
     const result = await assembleContext("conv-1", 42);
 
     expect(result.systemMessage).not.toContain("TEACH ME MODE IS ACTIVE");
-    expect(result.systemMessage).toContain("NEVER invent or hallucinate chess moves");
+    expect(result.systemMessage).toContain("YOU ARE THE AI OPPONENT");
   });
 
   it("exposes 5 tool schemas for chess plugin (including get_help)", async () => {
@@ -304,7 +305,9 @@ describe("assembleContext — chess plugin integration", () => {
     const result = await assembleContext("conv-1", 42);
 
     expect(result.tools).toHaveLength(5);
-    const toolNames = (result.tools as Array<{ name: string }>).map(t => t.name);
+    // Tools are wrapped as { type: "function", function: { name, ... } }
+    const toolNames = (result.tools as Array<{ type: string; function: { name: string } }>)
+      .map(t => t.function?.name ?? (t as unknown as { name: string }).name);
     expect(toolNames).toContain("get_help");
     expect(toolNames).toContain("make_move");
     expect(toolNames).toContain("start_game");

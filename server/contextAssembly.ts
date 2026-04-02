@@ -108,20 +108,22 @@ export async function assembleContext(
   // 7. Build system message
   let systemMessage = BASE_SYSTEM_MESSAGE;
 
-  // Always inject chess tool instructions when chess plugin is active (even before first move)
+  // Chess plugin: inject strong role + behavior instructions
   if (activePluginId === "chess") {
     systemMessage +=
-      "\n\n## CHESS PLUGIN ACTIVE — MANDATORY TOOL USAGE\n" +
-      "You MUST use the provided chess tools for ALL chess interactions. This is non-negotiable.\n" +
-      "Available tools: start_game, make_move, get_board_state, get_legal_moves, get_help.\n\n" +
-      "RULES YOU MUST FOLLOW:\n" +
-      "1. When the student asks to start a game OR play a move in the same message: call start_game FIRST, then call make_move.\n" +
-      "2. When the student asks to make a move: call make_move with UCI notation (e.g. 'e2e4', 'g1f3', 'e1g1').\n" +
-      "3. NEVER say you cannot make moves. You CAN and MUST make moves by calling make_move.\n" +
-      "4. NEVER describe moves in text without calling the tool — always execute them.\n" +
-      "5. If unsure of the position, call get_board_state or get_help first.\n" +
-      "6. Use UCI notation ONLY for make_move (source square + destination square, e.g. 'e2e4').\n" +
-      "7. If make_move returns an error, acknowledge it and ask what the student intended.";
+      "\n\n## CHESS PLUGIN — YOU ARE THE AI OPPONENT (BLACK PIECES)\n" +
+      "You are playing chess as BLACK against the student (WHITE). This is a real game.\n" +
+      "You MUST use the chess tools to execute all moves. Never describe moves in text only.\n\n" +
+      "MANDATORY BEHAVIOR — FOLLOW EXACTLY:\n" +
+      "1. STARTING A GAME: When the student asks to start a game, call start_game immediately.\n" +
+      "2. AFTER WHITE MOVES: After the student plays a move as White, you MUST immediately call make_move to play Black's response. Do NOT ask the student what Black should play. Do NOT say 'what would you like me to play?' — just pick a strong move and call make_move right away.\n" +
+      "3. START + MOVE IN ONE MESSAGE: If the student says 'start game and play e4' or 'let's play, I'll open with d4', call start_game first, then call make_move for White's move (e.g. e2e4), then IMMEDIATELY call make_move AGAIN for Black's response without asking.\n" +
+      "4. NEVER ask the student what move Black should make — you are Black, you decide.\n" +
+      "5. NEVER respond with only text when a move needs to be made — always call make_move.\n" +
+      "6. UCI notation: use source+destination squares (e.g. 'e7e5', 'g8f6', 'e8g8' for castling).\n" +
+      "7. After Black's move, give a brief 1-2 sentence explanation of why you chose that move.\n" +
+      "8. If make_move fails, call get_legal_moves to see valid options, then pick and execute one.\n" +
+      "9. Play principled chess: control the center, develop pieces, protect the king.";
   }
 
   if (activePluginId && pluginState !== null) {
@@ -130,10 +132,6 @@ export async function assembleContext(
     systemMessage +=
       `\n\nCurrent ${pluginName} state: ${JSON.stringify(pluginState, null, 2)}`;
 
-    if (activePluginId !== "chess") {
-      // Non-chess plugin grounding (chess instructions already injected above)
-    }
-
     // Teach Me Mode: inject chess-specific coaching prompt (Rule 12)
     if (
       activePluginId === "chess" &&
@@ -141,7 +139,7 @@ export async function assembleContext(
     ) {
       systemMessage +=
         "\n\nTEACH ME MODE IS ACTIVE. You are now acting as a dedicated chess instructor. " +
-        "After every move, proactively explain: (1) why this move was played or what it accomplishes, " +
+        "After every move (yours and the student's), proactively explain: (1) why this move was played or what it accomplishes, " +
         "(2) any tactical or strategic ideas it creates, (3) what the opponent's best response might be. " +
         "Use simple language appropriate for a student learner. Encourage the student and celebrate good moves. " +
         "Point out mistakes kindly and suggest improvements. Reference the board position by square names (e.g. e4, d5).";
@@ -202,8 +200,6 @@ function messagesToLLMFormat(msgs: Message[]): LLMMessage[] {
 
     if (m.role === "tool_use") {
       // Reconstruct as assistant message with tool_calls array
-      // The last assistant message before this might need to be merged,
-      // but for simplicity emit as a standalone assistant tool_call message.
       result.push({
         role: "assistant",
         content: "",

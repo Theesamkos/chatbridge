@@ -210,9 +210,10 @@ describe("PluginBridge", () => {
 
     bridge.sendInit({ board: "start" });
 
+    // Sandboxed iframes have null/opaque origin, so PluginBridge uses "*" as targetOrigin
     expect(postMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: "INIT", version: 1, pluginId: PLUGIN_ID }),
-      REGISTERED_ORIGIN,
+      "*",
     );
     bridge.destroy();
   });
@@ -300,9 +301,10 @@ describe("PluginBridge — lifecycle callbacks", () => {
 
     bridge.sendPing();
 
+    // Sandboxed iframes have null/opaque origin, so PluginBridge uses "*" as targetOrigin
     expect(postMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: "PING", version: 1 }),
-      REGISTERED_ORIGIN,
+      "*",
     );
     bridge.destroy();
   });

@@ -11,7 +11,7 @@ import { waitForToolResult } from "./pendingToolResults";
 import { circuitBreaker } from "../circuitBreaker";
 import { rateLimiter } from "../rateLimiter";
 
-const MAX_TOOL_CALLS = 3; // Rule 13
+const MAX_TOOL_CALLS = 5; // Rule 13 — chess needs: start_game + make_move(white) + make_move(black) + optional error recovery
 const TOOL_RESULT_TIMEOUT_MS = 10_000;
 
 const ajv = new Ajv({ strict: false });
@@ -225,7 +225,7 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
           totalOutputTokens += result.usage.completion_tokens ?? 0;
         }
 
-        const choice = result.choices[0];
+        const choice = result.choices?.[0];
         if (!choice) break;
 
         const rawContent = choice.message.content;
