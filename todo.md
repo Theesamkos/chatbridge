@@ -155,7 +155,19 @@
 
 ## Color Palette: Warm Amber/Gold Theme
 
-- [ ] Update index.css: shift all OKLCH primary/secondary/accent tokens to warm amber/gold
-- [ ] Update index.css: shift background/card/sidebar tokens to warm deep charcoal
-- [ ] Update plugin iframes: chess, timeline, artifact-studio warm color accents
-- [ ] Verify 0 TS errors and all 122 tests pass
+- [x] Update index.css: shift all OKLCH primary/secondary/accent tokens to warm amber/gold
+- [x] Update index.css: shift background/card/sidebar tokens to warm deep charcoal
+- [x] Update plugin iframes: chess, timeline, artifact-studio warm color accents
+- [x] Verify 0 TS errors and all 122 tests pass
+
+## Phase 6: Safety, Moderation, Monitoring & Resilience Hardening
+
+- [ ] Pre-LLM safety inspection layer (user input, plugin state, tool results, injection detection)
+- [ ] Post-LLM output moderation layer (policy scanner, PII detector, allow/block/sanitize, event logging)
+- [ ] Plugin state schema validators (chess, timeline, artifact-studio) + STATE_UPDATE/TOOL_RESULT hardening
+- [ ] Plugin circuit breaker + session freeze/escalation logic
+- [ ] Structured audit logging system (all critical safety/lifecycle events)
+- [ ] Rate limiting middleware (chat messages, plugin state updates, tool invocation loops)
+- [ ] Degraded-mode resilience (fallback chains, preserved chat continuity, safe failure messages)
+- [ ] Premium failure UX (polished error/degraded/freeze states in PluginContainer and Chat)
+- [ ] Safety/resilience tests + all 122 existing tests passing

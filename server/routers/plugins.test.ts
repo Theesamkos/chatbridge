@@ -148,18 +148,31 @@ describe("plugins.updateState", () => {
       id: "ps-1",
       conversationId: "conv-1",
       pluginId: "chess",
-      state: { board: "rnbq" },
+      state: { fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", status: "active" },
       version: 2,
       createdAt: new Date(),
     });
 
+    // Phase 6: state must pass the chess schema validator
     const result = await makeCaller().updateState({
       conversationId: "conv-1",
       pluginId: "chess",
-      state: { board: "rnbq" },
+      state: { fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", status: "active" },
     });
 
     expect(result).toMatchObject({ success: true, version: 2 });
+  });
+
+  it("rejects state that fails chess schema validation", async () => {
+    vi.mocked(getConversationById).mockResolvedValue(makeConv({ activePluginId: "chess" }));
+
+    await expect(
+      makeCaller().updateState({
+        conversationId: "conv-1",
+        pluginId: "chess",
+        state: { board: "not-a-fen" }, // missing required fields
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("throws BAD_REQUEST when plugin is not active for that conversation", async () => {

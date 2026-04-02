@@ -24,10 +24,13 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState, startTran
 import { trpc } from "@/lib/trpc";
 import { PluginBridge } from "@/lib/PluginBridge";
 import type { PluginSchema } from "../../../drizzle/schema";
-import { Loader2, AlertTriangle, CheckCircle2, Zap, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle2, Zap, RefreshCw, ShieldAlert, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { PluginLifecycleState } from "../../../shared/pluginTypes";
+
+// Extended lifecycle states beyond the shared protocol (UI-only states)
+type ExtendedLifecycleState = PluginLifecycleState | "frozen" | "circuit_open";
 
 const PLUGIN_READY_TIMEOUT_MS = 15_000;
 
@@ -54,8 +57,8 @@ interface PluginContainerProps {
 
 // ─── Status pill ─────────────────────────────────────────────────────────────
 
-function StatusPill({ state }: { state: PluginLifecycleState }) {
-  const config: Record<PluginLifecycleState, { label: string; className: string; icon: React.ReactNode }> = {
+function StatusPill({ state }: { state: ExtendedLifecycleState }) {
+  const config: Record<ExtendedLifecycleState, { label: string; className: string; icon: React.ReactNode }> = {
     loading: {
       label: "Loading",
       className: "bg-muted/60 text-muted-foreground border-border/40",
@@ -86,6 +89,16 @@ function StatusPill({ state }: { state: PluginLifecycleState }) {
       className: "bg-muted/40 text-muted-foreground/60 border-border/30",
       icon: null,
     },
+    frozen: {
+      label: "Frozen",
+      className: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+      icon: <Lock className="h-2.5 w-2.5" />,
+    },
+    circuit_open: {
+      label: "Paused",
+      className: "bg-destructive/10 text-destructive border-destructive/20",
+      icon: <ShieldAlert className="h-2.5 w-2.5" />,
+    },
   };
 
   const { label, className, icon } = config[state];
@@ -115,7 +128,7 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
     // Use a ref to track loading state for the timeout callback (avoids stale closure)
     const isLoadingRef = useRef(true);
 
-    const [lifecycleState, setLifecycleState] = useState<PluginLifecycleState>("loading");
+    const [lifecycleState, setLifecycleState] = useState<ExtendedLifecycleState>("loading");
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [completeSummary, setCompleteSummary] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
@@ -129,7 +142,18 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
         if (!bridge) return Promise.reject(new Error("PluginBridge not ready"));
         // Transition to active state when a tool is invoked
         setLifecycleState(prev => (prev === "ready" || prev === "active") ? "active" : prev);
-        return bridge.sendToolInvoke(toolCallId, toolName, args);
+        return bridge.sendToolInvoke(toolCallId, toolName, args).catch((err: Error) => {
+          // If the server returns a 429 (circuit breaker) or 403 (frozen), surface it
+          const msg = err.message ?? "";
+          if (msg.includes("circuit") || msg.includes("breaker")) {
+            setLifecycleState("circuit_open");
+            setErrorMessage("Too many errors detected. This plugin has been temporarily paused for safety.");
+          } else if (msg.includes("frozen") || msg.includes("Conversation is frozen")) {
+            setLifecycleState("frozen");
+            setErrorMessage("This session has been frozen by a safety check. Please contact your teacher.");
+          }
+          throw err;
+        });
       },
     }));
 
@@ -183,10 +207,19 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
             onComplete?.(finalState, summary);
           },
           onError(error, fatal) {
-            if (fatal && !destroyed) {
-              setLifecycleState("error");
-              setErrorMessage(error);
-              onError?.(error);
+            if (!destroyed) {
+              // Detect circuit breaker / frozen signals in the error message
+              if (error.includes("circuit") || error.includes("breaker")) {
+                setLifecycleState("circuit_open");
+                setErrorMessage("Too many errors detected. This plugin has been temporarily paused for safety.");
+              } else if (error.includes("frozen")) {
+                setLifecycleState("frozen");
+                setErrorMessage("This session has been frozen by a safety check. Please contact your teacher.");
+              } else if (fatal) {
+                setLifecycleState("error");
+                setErrorMessage(error);
+              }
+              if (fatal) onError?.(error);
             }
           },
         },
@@ -243,6 +276,45 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
               <p className="text-sm font-medium">Loading {schema.name}…</p>
               <p className="text-xs text-muted-foreground mt-0.5">Setting up your learning environment</p>
             </div>
+          </div>
+        )}
+
+        {/* Frozen overlay — session locked by safety system */}
+        {lifecycleState === "frozen" && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-background/97 backdrop-blur-sm p-6 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+              <Lock className="h-7 w-7 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-amber-600">Session Frozen</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
+                {errorMessage ?? "This session has been frozen. Please contact your teacher for assistance."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Circuit breaker overlay — too many plugin errors */}
+        {lifecycleState === "circuit_open" && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-background/97 backdrop-blur-sm p-6 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center">
+              <ShieldAlert className="h-7 w-7 text-destructive" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-destructive">Plugin Paused</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
+                {errorMessage ?? "Too many errors were detected. This plugin has been temporarily paused."}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={handleRetry}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Try Again
+            </Button>
           </div>
         )}
 

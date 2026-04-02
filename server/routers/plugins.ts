@@ -20,6 +20,7 @@ import {
 import { getPluginSchema, clearAllowlistCache } from "../pluginAllowlist";
 import { writeAuditLog } from "../auditLog";
 import { rateLimiter } from "../rateLimiter";
+import { validatePluginState, inspectStateForInjection } from "../pluginStateSchemas";
 
 export const pluginsRouter = router({
   // ── Conversation-scoped procedures ──────────────────────────────────────────
@@ -128,8 +129,40 @@ export const pluginsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
       }
 
+      if (conversation.status === "frozen") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Conversation is frozen" });
+      }
+
       if (conversation.activePluginId !== input.pluginId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Plugin is not active for this conversation" });
+      }
+
+      // Phase 6: validate state against per-plugin schema
+      const schemaCheck = validatePluginState(input.pluginId, input.state);
+      if (!schemaCheck.valid) {
+        void writeAuditLog({
+          eventType: "MALFORMED_STATE",
+          userId: ctx.user.id,
+          conversationId: input.conversationId,
+          pluginId: input.pluginId,
+          payload: { error: schemaCheck.error, pluginId: input.pluginId },
+          severity: "warning",
+        });
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid plugin state: ${schemaCheck.error}` });
+      }
+
+      // Phase 6: scan state for prompt injection patterns
+      const injectionCheck = inspectStateForInjection(input.state);
+      if (!injectionCheck.clean) {
+        void writeAuditLog({
+          eventType: "STATE_INJECTION_ATTEMPT",
+          userId: ctx.user.id,
+          conversationId: input.conversationId,
+          pluginId: input.pluginId,
+          payload: { reason: injectionCheck.reason },
+          severity: "critical",
+        });
+        throw new TRPCError({ code: "BAD_REQUEST", message: "State contains prohibited content" });
       }
 
       const updated = await upsertPluginState({
