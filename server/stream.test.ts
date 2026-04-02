@@ -14,6 +14,7 @@ vi.mock("./db", () => ({
   getConversationById: vi.fn(),
   createMessage: vi.fn(),
   createPluginFailure: vi.fn().mockResolvedValue(undefined),
+  freezeConversation: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./rateLimiter", () => ({
@@ -40,7 +41,7 @@ vi.mock("./auditLog", () => ({
 
 import { sdk } from "./_core/sdk";
 import { assembleContext } from "./contextAssembly";
-import { getConversationById, createMessage } from "./db";
+import { getConversationById, createMessage, freezeConversation } from "./db";
 import { invokeLLMStream } from "./_core/llm";
 import { inspectInput, moderateWithLLM } from "./safety";
 import { rateLimiter } from "./rateLimiter";
@@ -170,6 +171,32 @@ describe("POST /api/chat/stream", () => {
     );
     // SSE headers must NOT have been flushed
     expect(res.flushHeaders).not.toHaveBeenCalled();
+  });
+
+  it("calls freezeConversation when output moderation blocks the response (Rule 33)", async () => {
+    // Stub moderateWithLLM to return a block action
+    vi.mocked(moderateWithLLM).mockResolvedValue({
+      passed: false,
+      action: "block",
+      reason: "K-12 policy violation",
+    });
+    vi.mocked(freezeConversation).mockResolvedValue(undefined);
+
+    const req = createMockReq({ conversationId: "conv-1", message: "Tell me about history" });
+    const res = createMockRes();
+
+    await streamHandler(req as never, res as never);
+
+    // The stream should still complete (blocked content replaced)
+    const completeEvent = res.written.find(w => w.includes('"type":"complete"'));
+    expect(completeEvent).toBeDefined();
+
+    // freezeConversation must have been called with the conversation ID and user ID
+    expect(freezeConversation).toHaveBeenCalledWith(
+      "conv-1",
+      expect.stringContaining("Output blocked"),
+      1, // user.id from the mock
+    );
   });
 
   it("returns plain HTTP 404 when conversationId does not belong to the user (Rule 31)", async () => {

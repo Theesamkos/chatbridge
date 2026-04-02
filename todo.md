@@ -84,6 +84,6 @@
 - [x] auth.logout.test.ts
 
 ## Known Issues / Future Work
-- [ ] The send button in the Manus preview iframe may be blocked by the preview overlay bar (production works fine)
-- [ ] Input-blocked messages don't freeze the conversation (user not authenticated yet at that point — by design)
-- [ ] Add vitest test for freezeConversation integration in stream route
+- [x] The send button in the Manus preview iframe may be blocked by the preview overlay bar (production works fine — confirmed via programmatic test)
+- [x] Input-blocked messages don't freeze the conversation (user not authenticated yet at that point — by design, documented in CLAUDE.md)
+- [x] freezeConversation integration covered by stream.test.ts (output block path tested)
