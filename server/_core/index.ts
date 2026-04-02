@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
 import { streamHandler } from "../routes/stream";
+import { toolResultHandler } from "../routes/toolResult";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,8 +40,10 @@ async function startServer() {
   registerOAuthRoutes(app);
 
   // SSE streaming endpoint — must be registered BEFORE tRPC middleware (Decision 4).
+  // Phase 2 production handler at /api/chat/stream.
   // Implementation in server/routes/stream.ts.
-  app.post("/api/stream", streamHandler);
+  app.post("/api/chat/stream", streamHandler);
+  app.post("/api/chat/tool-result", toolResultHandler);
 
   // tRPC API
   app.use(

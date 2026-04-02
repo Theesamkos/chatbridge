@@ -1,6 +1,21 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import {
+  type Conversation,
+  type InsertConversation,
+  type InsertMessage,
+  type Message,
+  type PluginState,
+  type PluginSchema,
+  type InsertPluginSchema,
+  conversations,
+  messages,
+  pluginStates,
+  pluginSchemas,
+  users,
+  type InsertUser,
+  type InsertPluginState,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -90,4 +105,140 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Conversations ────────────────────────────────────────────────────────────
+
+export async function getConversationById(id: string): Promise<Conversation | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createConversation(data: InsertConversation): Promise<Conversation> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(conversations).values(data);
+  const row = await getConversationById(data.id);
+  if (!row) throw new Error("Failed to retrieve created conversation");
+  return row;
+}
+
+export async function listConversations(userId: number): Promise<Conversation[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.userId, userId), eq(conversations.status, "active")))
+    .orderBy(desc(conversations.updatedAt));
+}
+
+export async function archiveConversation(id: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(conversations).set({ status: "archived" }).where(eq(conversations.id, id));
+}
+
+export async function updateConversationActivePlugin(
+  id: string,
+  pluginId: string | null,
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(conversations).set({ activePluginId: pluginId }).where(eq(conversations.id, id));
+}
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+export async function createMessage(data: InsertMessage): Promise<Message> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(messages).values(data);
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.id, data.id))
+    .limit(1);
+  if (!rows[0]) throw new Error("Failed to retrieve created message");
+  return rows[0];
+}
+
+export async function getConversationMessages(
+  conversationId: string,
+  limit = 20,
+): Promise<Message[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(desc(messages.createdAt))
+    .limit(limit)
+    .then(rows => rows.reverse()); // return chronological order
+}
+
+// ─── Plugin states ────────────────────────────────────────────────────────────
+
+/**
+ * INSERT or UPDATE plugin state for a conversation.
+ * Uses ON DUPLICATE KEY UPDATE to handle the UNIQUE(conversationId, pluginId) constraint.
+ * Increments version on every update.
+ */
+export async function upsertPluginState(data: InsertPluginState): Promise<PluginState | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .insert(pluginStates)
+    .values(data)
+    .onDuplicateKeyUpdate({
+      set: {
+        state: data.state,
+        version: sql`version + 1`,
+      },
+    });
+  return getLatestPluginState(data.conversationId, data.pluginId);
+}
+
+// ─── Plugin schemas (admin helpers) ──────────────────────────────────────────
+
+export async function listPluginSchemas(): Promise<PluginSchema[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pluginSchemas);
+}
+
+export async function createPluginSchema(data: InsertPluginSchema): Promise<PluginSchema> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(pluginSchemas).values(data);
+  const rows = await db.select().from(pluginSchemas).where(eq(pluginSchemas.id, data.id)).limit(1);
+  if (!rows[0]) throw new Error("Failed to retrieve created plugin schema");
+  return rows[0];
+}
+
+export async function updatePluginStatus(
+  id: string,
+  status: "active" | "disabled" | "suspended",
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(pluginSchemas).set({ status }).where(eq(pluginSchemas.id, id));
+}
+
+export async function getLatestPluginState(
+  conversationId: string,
+  pluginId: string,
+): Promise<PluginState | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(pluginStates)
+    .where(
+      and(eq(pluginStates.conversationId, conversationId), eq(pluginStates.pluginId, pluginId)),
+    )
+    .orderBy(desc(pluginStates.version))
+    .limit(1);
+  return rows[0] ?? null;
+}

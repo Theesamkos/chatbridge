@@ -25,11 +25,21 @@ export type FileContent = {
 
 export type MessageContent = string | TextContent | ImageContent | FileContent;
 
+export type ToolCall = {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+};
+
 export type Message = {
   role: Role;
   content: MessageContent | MessageContent[];
   name?: string;
   tool_call_id?: string;
+  tool_calls?: ToolCall[];
 };
 
 export type Tool = {
@@ -66,15 +76,6 @@ export type InvokeParams = {
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
   response_format?: ResponseFormat;
-};
-
-export type ToolCall = {
-  id: string;
-  type: "function";
-  function: {
-    name: string;
-    arguments: string;
-  };
 };
 
 export type InvokeResult = {
@@ -137,7 +138,7 @@ const normalizeContentPart = (
 };
 
 const normalizeMessage = (message: Message) => {
-  const { role, name, tool_call_id } = message;
+  const { role, name, tool_call_id, tool_calls } = message;
 
   if (role === "tool" || role === "function") {
     const content = ensureArray(message.content)
@@ -149,6 +150,19 @@ const normalizeMessage = (message: Message) => {
       name,
       tool_call_id,
       content,
+    };
+  }
+
+  // Assistant messages may carry tool_calls (for multi-turn tool use loops)
+  if (role === "assistant" && tool_calls && tool_calls.length > 0) {
+    const contentStr =
+      ensureArray(message.content)
+        .map(p => (typeof p === "string" ? p : p.type === "text" ? p.text : ""))
+        .join("") || null;
+    return {
+      role,
+      content: contentStr,
+      tool_calls,
     };
   }
 
@@ -326,4 +340,79 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   return (await response.json()) as InvokeResult;
+}
+
+/**
+ * Streaming variant of invokeLLM (Decision 3).
+ * Yields text tokens as they arrive from the Forge API (OpenAI streaming format).
+ * Pass an AbortSignal to cancel on client disconnect (Rule 18).
+ */
+export async function* invokeLLMStream(
+  params: InvokeParams,
+  signal?: AbortSignal,
+): AsyncGenerator<string> {
+  assertApiKey();
+
+  const { messages, tools, toolChoice, tool_choice } = params;
+
+  const payload: Record<string, unknown> = {
+    model: "claude-sonnet-4-5",
+    messages: messages.map(normalizeMessage),
+    stream: true,
+    max_tokens: 8192,
+  };
+
+  if (tools && tools.length > 0) {
+    payload.tools = tools;
+  }
+
+  const normalizedToolChoice = normalizeToolChoice(toolChoice || tool_choice, tools);
+  if (normalizedToolChoice) {
+    payload.tool_choice = normalizedToolChoice;
+  }
+
+  const response = await fetch(resolveApiUrl(), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${ENV.forgeApiKey}`,
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    const errorText = await response.text();
+    throw new Error(`LLM stream failed: ${response.status} ${response.statusText} – ${errorText}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const raw = line.slice(6).trim();
+        if (!raw || raw === "[DONE]") continue;
+
+        const chunk = JSON.parse(raw) as {
+          choices: Array<{ delta: { content?: string }; finish_reason: string | null }>;
+        };
+
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) yield content;
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }

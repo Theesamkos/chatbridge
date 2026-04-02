@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mock Plugin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      background: #0f172a;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #1e293b;
+      padding: 10px 14px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    header h1 { font-size: 13px; font-weight: 600; flex: 1; }
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 99px;
+      background: #0ea5e9;
+      color: #fff;
+      font-weight: 600;
+    }
+    .badge.ready { background: #22c55e; }
+    .badge.error { background: #ef4444; }
+    .state-panel {
+      margin: 10px;
+      padding: 8px 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+    .state-panel h2 { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+    #stateDisplay { white-space: pre-wrap; color: #7dd3fc; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 10px;
+    }
+    button {
+      padding: 5px 10px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-danger  { background: #ef4444; color: #fff; }
+    .btn-neutral { background: #475569; color: #e2e8f0; }
+    .log-panel {
+      flex: 1;
+      overflow-y: auto;
+      margin: 0 10px 10px;
+      padding: 8px 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+    }
+    .log-panel h2 { font-size: 11px; color: #94a3b8; margin-bottom: 6px; }
+    #logList { list-style: none; }
+    #logList li {
+      font-size: 11px;
+      padding: 2px 0;
+      border-bottom: 1px solid #1e293b;
+      color: #cbd5e1;
+      font-family: monospace;
+    }
+    #logList li.inbound  { color: #7dd3fc; }
+    #logList li.outbound { color: #86efac; }
+    #logList li.info     { color: #fde68a; }
+    #logList li.err      { color: #fca5a5; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Mock Plugin</h1>
+  <span id="statusBadge" class="badge">waiting</span>
+</header>
+
+<div class="state-panel">
+  <h2>Current State</h2>
+  <pre id="stateDisplay">—</pre>
+</div>
+
+<div class="actions">
+  <button class="btn-neutral" onclick="sendStateUpdate()">Send STATE_UPDATE</button>
+  <button class="btn-success" onclick="sendComplete()">Send PLUGIN_COMPLETE</button>
+  <button class="btn-danger"  onclick="sendError()">Send PLUGIN_ERROR</button>
+  <button class="btn-primary" onclick="sendPong()">Send PONG</button>
+</div>
+
+<div class="log-panel">
+  <h2>Message Log</h2>
+  <ul id="logList"></ul>
+</div>
+
+<script>
+  const PROTOCOL_VERSION = 1;
+
+  let sessionId   = null;
+  let pluginId    = null;
+  let parentOrigin = null;
+  let stateCounter = 0;
+  let autoStateInterval = null;
+
+  const badge        = document.getElementById("statusBadge");
+  const stateDisplay = document.getElementById("stateDisplay");
+  const logList      = document.getElementById("logList");
+
+  function log(text, cls = "") {
+    const li = document.createElement("li");
+    li.className = cls;
+    li.textContent = `[${new Date().toISOString().slice(11, 23)}] ${text}`;
+    logList.prepend(li);
+  }
+
+  function setStatus(label, cls) {
+    badge.textContent = label;
+    badge.className   = "badge " + cls;
+  }
+
+  function post(msg) {
+    if (!parentOrigin) { log("No parentOrigin yet — cannot post", "err"); return; }
+    window.parent.postMessage(msg, parentOrigin);
+    log("→ " + msg.type + (msg.toolCallId ? " [" + msg.toolCallId + "]" : ""), "outbound");
+  }
+
+  // ── Outbound helpers ───────────────────────────────────────────────────────
+
+  function ready() {
+    post({ type: "PLUGIN_READY", version: PROTOCOL_VERSION, sessionId, pluginId });
+    setStatus("ready", "ready");
+  }
+
+  function sendStateUpdate() {
+    stateCounter++;
+    const state = { counter: stateCounter, timestamp: Date.now(), message: "Auto state " + stateCounter };
+    stateDisplay.textContent = JSON.stringify(state, null, 2);
+    post({ type: "STATE_UPDATE", version: PROTOCOL_VERSION, sessionId, pluginId, state, partial: false });
+  }
+
+  function sendComplete() {
+    const finalState = { counter: stateCounter, complete: true };
+    stateDisplay.textContent = JSON.stringify(finalState, null, 2);
+    post({
+      type: "PLUGIN_COMPLETE",
+      version: PROTOCOL_VERSION,
+      sessionId,
+      pluginId,
+      finalState,
+      summary: "Mock plugin completed with counter=" + stateCounter,
+    });
+    setStatus("done", "ready");
+    if (autoStateInterval) clearInterval(autoStateInterval);
+  }
+
+  function sendError() {
+    post({
+      type: "PLUGIN_ERROR",
+      version: PROTOCOL_VERSION,
+      sessionId,
+      pluginId,
+      error: "Simulated plugin error from mock",
+      fatal: false,
+    });
+    setStatus("error", "error");
+  }
+
+  function sendPong() {
+    post({ type: "PONG", version: PROTOCOL_VERSION, sessionId, pluginId });
+  }
+
+  // ── Inbound handler ────────────────────────────────────────────────────────
+
+  window.addEventListener("message", function(event) {
+    const msg = event.data;
+    if (!msg || typeof msg.type !== "string") return;
+
+    log("← " + msg.type, "inbound");
+
+    switch (msg.type) {
+      case "INIT":
+        sessionId    = msg.sessionId;
+        pluginId     = msg.pluginId;
+        parentOrigin = event.origin;
+
+        if (msg.restoredState) {
+          stateDisplay.textContent = JSON.stringify(msg.restoredState, null, 2);
+          log("Restored state received", "info");
+        }
+
+        // Send PLUGIN_READY immediately
+        ready();
+
+        // Auto-send STATE_UPDATE every 5 seconds
+        autoStateInterval = setInterval(sendStateUpdate, 5000);
+        break;
+
+      case "TOOL_INVOKE":
+        log("TOOL_INVOKE " + msg.toolName + " args=" + JSON.stringify(msg.arguments), "info");
+        // Immediately echo back a successful TOOL_RESULT
+        setTimeout(function() {
+          post({
+            type: "TOOL_RESULT",
+            version: PROTOCOL_VERSION,
+            sessionId,
+            pluginId,
+            toolCallId: msg.toolCallId,
+            result: { ok: true, toolName: msg.toolName, echo: msg.arguments },
+            isError: false,
+          });
+        }, 200);
+        break;
+
+      case "PING":
+        sendPong();
+        break;
+
+      default:
+        log("Unknown message type: " + msg.type, "err");
+    }
+  });
+</script>
+</body>
+</html>
