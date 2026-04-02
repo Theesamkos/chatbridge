@@ -108,6 +108,19 @@ export async function assembleContext(
     systemMessage +=
       `\n\nThe student is currently using the ${pluginName}. ` +
       `Current state: ${JSON.stringify(pluginState, null, 2)}`;
+
+    // Teach Me Mode: inject chess-specific coaching prompt (Rule 12)
+    if (
+      activePluginId === "chess" &&
+      (pluginState as Record<string, unknown>).teachMeMode === true
+    ) {
+      systemMessage +=
+        "\n\nTEACH ME MODE IS ACTIVE. You are now acting as a dedicated chess instructor. " +
+        "After every move, proactively explain: (1) why this move was played or what it accomplishes, " +
+        "(2) any tactical or strategic ideas it creates, (3) what the opponent's best response might be. " +
+        "Use simple language appropriate for a student learner. Encourage the student and celebrate good moves. " +
+        "Point out mistakes kindly and suggest improvements. Reference the board position by square names (e.g. e4, d5).";
+    }
   }
 
   return {

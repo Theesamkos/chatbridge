@@ -6,6 +6,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { artifactsRouter } from "./routers/artifacts";
+import { investigationsRouter } from "./routers/investigations";
 import { pluginsRouter } from "./routers/plugins";
 import { teacherRouter } from "./routers/teacher";
 import { adminRouter } from "./routers/admin";
@@ -76,6 +77,7 @@ export const appRouter = router({
   conversations: conversationsRouter,
   plugins: pluginsRouter,
   artifacts: artifactsRouter,
+  investigations: investigationsRouter,
   teacher: teacherRouter,
   admin:   adminRouter,
 });

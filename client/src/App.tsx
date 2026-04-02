@@ -19,6 +19,7 @@ import AuditLogViewer from "./pages/admin/AuditLogViewer";
 import UserManagement from "./pages/admin/UserManagement";
 import CostDashboard from "./pages/admin/CostDashboard";
 import PluginFailures from "./pages/admin/PluginFailures";
+import InvestigationPortfolio from "./pages/InvestigationPortfolio";
 
 // ─── Admin route guard ────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/chat"} component={Chat} />
+      <Route path={"/portfolio"} component={InvestigationPortfolio} />
       <Route path={"/stream-test"} component={StreamTest} />
 
       {/* Teacher routes — role: teacher | admin */}
@@ -131,8 +133,8 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
-        // switchable
+        defaultTheme="dark"
+        switchable
       >
         <TooltipProvider>
           <Toaster />

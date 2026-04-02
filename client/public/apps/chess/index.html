@@ -303,6 +303,7 @@
     <div id="buttons">
       <button class="btn" id="new-game-btn" onclick="handleNewGame()">New Game</button>
       <button class="btn danger" id="resign-btn" onclick="handleResign()">Resign</button>
+      <button class="btn" id="teach-me-btn" onclick="toggleTeachMe()" style="border-color:#7c4dff">🎓 Teach Me Mode: OFF</button>
     </div>
   </div>
 </div>
@@ -314,6 +315,7 @@ let pluginId = 'chess';
 let conversationId = null;
 let registeredOrigin = null;
 let gameOver = false;
+let teachMeMode = false;
 
 // ─── Chess engine ──────────────────────────────────────────────────────────
 let chess = new Chess();
@@ -594,6 +596,7 @@ function sendStateUpdate() {
     moveHistory: chess.history(),
     status: getGameStatus(),
     capturedPieces: captured,
+    teachMeMode,
   };
   sendMessage({
     type: 'STATE_UPDATE',
@@ -603,6 +606,17 @@ function sendStateUpdate() {
     state,
     partial: false,
   });
+}
+
+function toggleTeachMe() {
+  teachMeMode = !teachMeMode;
+  const btn = document.getElementById('teach-me-btn');
+  if (btn) {
+    btn.textContent = '🎓 Teach Me Mode: ' + (teachMeMode ? 'ON' : 'OFF');
+    btn.style.borderColor = teachMeMode ? '#ffd700' : '#7c4dff';
+    btn.style.background = teachMeMode ? '#1a3a10' : '';
+  }
+  sendStateUpdate();
 }
 
 function sendPluginComplete(reason, summary) {
