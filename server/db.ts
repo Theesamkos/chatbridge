@@ -144,6 +144,16 @@ export async function archiveConversation(id: string): Promise<void> {
   await db.update(conversations).set({ status: "archived" }).where(eq(conversations.id, id));
 }
 
+export async function deleteConversation(id: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  // Delete child rows first (no DB-level cascade)
+  await db.delete(messages).where(eq(messages.conversationId, id));
+  await db.delete(pluginStates).where(eq(pluginStates.conversationId, id));
+  await db.delete(pluginFailures).where(eq(pluginFailures.conversationId, id));
+  await db.delete(conversations).where(eq(conversations.id, id));
+}
+
 export async function updateConversationActivePlugin(
   id: string,
   pluginId: string | null,

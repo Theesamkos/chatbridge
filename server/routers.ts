@@ -13,6 +13,7 @@ import { adminRouter } from "./routers/admin";
 import {
   archiveConversation,
   createConversation,
+  deleteConversation,
   getConversationById,
   getConversationMessages,
   listConversations,
@@ -56,6 +57,18 @@ const conversationsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
       }
       await archiveConversation(input.id);
+      return { success: true } as const;
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Verify ownership before permanent deletion
+      const conversation = await getConversationById(input.id);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      }
+      await deleteConversation(input.id);
       return { success: true } as const;
     }),
 });

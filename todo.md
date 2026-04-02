@@ -174,9 +174,14 @@
 
 ## Phase 7: Integration, Testing, Deployment Hardening & Final Readiness
 
-- [ ] Deep system audit: trace all critical flows, identify inconsistencies
-- [ ] Fix all identified issues: contract gaps, state continuity, error handling, dead code
-- [ ] Performance optimization: re-renders, streaming, plugin load times
-- [ ] Final test sweep: 152+ tests passing, 0 TS errors
-- [ ] Deployment hardening: build process, env vars, no secrets exposed
-- [ ] Final readiness report delivered
+- [x] Deep system audit: trace all critical flows, identify inconsistencies
+- [x] Fix all identified issues: contract gaps, state continuity, error handling, dead code
+- [x] Performance optimization: re-renders, streaming, plugin load times
+- [x] Final test sweep: 152/152 tests passing, 0 TS errors
+- [x] Deployment hardening: build process, env vars, no secrets exposed
+- [x] Final readiness report delivered
+
+## Production Bug Fixes + Delete Chat Feature
+- [ ] Fix chess AI asking for clarification instead of calling make_move with the UCI string
+- [ ] Fix chess start_game error ("An error occurred. Please try again.")
+- [ ] Add delete conversation feature (backend + frontend with confirmation)

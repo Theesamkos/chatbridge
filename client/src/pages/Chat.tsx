@@ -27,6 +27,7 @@ import {
   Send,
   Sparkles,
   Sun,
+  Trash2,
   X,
   Zap,
 } from "lucide-react";
@@ -255,10 +256,12 @@ interface SidebarContentProps {
   user: { role: string; name?: string | null } | null | undefined;
   onNavigate: (path: string) => void;
   onClose?: () => void;
+  onDelete: (id: string) => void;
+  deletingId: string | null;
 }
 
 const SidebarContents = React.memo(function SidebarContents({
-  convList, loading, activeConvId, onSelect, onNew, isCreating, user, onNavigate, onClose,
+  convList, loading, activeConvId, onSelect, onNew, isCreating, user, onNavigate, onClose, onDelete, deletingId,
 }: SidebarContentProps) {
   const [search, setSearch] = useState("");
 
@@ -321,31 +324,45 @@ const SidebarContents = React.memo(function SidebarContents({
         ) : (
           <ul className="py-1 space-y-0.5">
             {filtered.map(conv => (
-              <li key={conv.id}>
-                <button
-                  onClick={() => { onSelect(conv.id); onClose?.(); }}
-                  className={cn(
-                    "w-full rounded-lg px-3 py-2.5 text-left text-sm transition-all duration-150 min-h-[44px] group/item",
-                    activeConvId === conv.id
-                      ? "bg-primary/12 text-sidebar-primary font-medium shadow-sm"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="line-clamp-1 font-medium text-xs leading-snug flex-1">
-                      {(conv.title ?? "Untitled").slice(0, 40)}
-                    </span>
-                    {conv.activePluginId && (
-                      <Badge className="text-[9px] px-1 py-0 h-4 bg-primary/20 text-primary border-0 shrink-0">
-                        <Zap className="h-2.5 w-2.5 mr-0.5" />
-                        {conv.activePluginId}
-                      </Badge>
+              <li key={conv.id} className="group/conv">
+                <div className="relative flex items-center">
+                  <button
+                    onClick={() => { onSelect(conv.id); onClose?.(); }}
+                    className={cn(
+                      "w-full rounded-lg px-3 py-2.5 text-left text-sm transition-all duration-150 min-h-[44px] pr-8",
+                      activeConvId === conv.id
+                        ? "bg-primary/12 text-sidebar-primary font-medium shadow-sm"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                     )}
-                  </div>
-                  {conv.updatedAt && (
-                    <p className="text-[10px] opacity-50 mt-0.5">{relativeTime(conv.updatedAt)}</p>
-                  )}
-                </button>
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="line-clamp-1 font-medium text-xs leading-snug flex-1">
+                        {(conv.title ?? "Untitled").slice(0, 40)}
+                      </span>
+                      {conv.activePluginId && (
+                        <Badge className="text-[9px] px-1 py-0 h-4 bg-primary/20 text-primary border-0 shrink-0">
+                          <Zap className="h-2.5 w-2.5 mr-0.5" />
+                          {conv.activePluginId}
+                        </Badge>
+                      )}
+                    </div>
+                    {conv.updatedAt && (
+                      <p className="text-[10px] opacity-50 mt-0.5">{relativeTime(conv.updatedAt)}</p>
+                    )}
+                  </button>
+                  {/* Delete button — visible on hover */}
+                  <button
+                    onClick={e => { e.stopPropagation(); onDelete(conv.id); }}
+                    disabled={deletingId === conv.id}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md flex items-center justify-center opacity-0 group-hover/conv:opacity-100 transition-opacity duration-150 hover:bg-destructive/15 hover:text-destructive text-sidebar-foreground/40 disabled:opacity-30"
+                    aria-label="Delete conversation"
+                    title="Delete conversation"
+                  >
+                    {deletingId === conv.id
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <Trash2 className="h-3 w-3" />}
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -558,6 +575,18 @@ export default function Chat() {
                     }),
                   });
                 });
+            } else {
+              // Plugin container not yet mounted — send error immediately so server doesn't hang on timeout
+              fetch("/api/chat/tool-result", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  toolCallId: event.toolCallId,
+                  conversationId: activeConvId,
+                  result: "Plugin panel is still loading. Please wait a moment and try again.",
+                  isError: true,
+                }),
+              }).catch(() => {});
             }
           } else if (event.type === "tool_result") {
             setActiveToolName(null);
@@ -589,6 +618,22 @@ export default function Chat() {
     createConv.mutate({ title: "New conversation" });
   };
 
+  const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
+  const deleteConv = trpc.conversations.delete.useMutation({
+    onMutate: (vars) => setDeletingConvId(vars.id),
+    onSuccess: (_data, vars) => {
+      if (activeConvId === vars.id) setActiveConvId(null);
+      utils.conversations.list.invalidate();
+    },
+    onError: () => toast.error("Failed to delete conversation."),
+    onSettled: () => setDeletingConvId(null),
+  });
+
+  const handleDeleteConv = (id: string) => {
+    if (!window.confirm("Delete this conversation? This cannot be undone.")) return;
+    deleteConv.mutate({ id });
+  };
+
   // Build display messages
   const displayMessages: ChatMessage[] = [
     ...optimisticMessages,
@@ -606,6 +651,8 @@ export default function Chat() {
     isCreating: createConv.isPending,
     user,
     onNavigate: setLocation,
+    onDelete: handleDeleteConv,
+    deletingId: deletingConvId,
   };
 
   return (
