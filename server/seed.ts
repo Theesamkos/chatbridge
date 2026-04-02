@@ -23,24 +23,25 @@ const plugins: InsertPluginSchema[] = [
     allowedRoles: ["student", "teacher"],
     toolSchemas: [
       {
-        name: "chess_make_move",
+        name: "make_move",
         description:
-          "Make a chess move. Call this when the student wants to move a piece. Input must be standard algebraic notation.",
+          "Make a chess move on the board. Call this when the student asks to move a piece or when coaching a specific move. Input must be UCI notation (e.g. 'e2e4' to move from e2 to e4, 'e1g1' for kingside castling).",
         parameters: {
           type: "object",
           properties: {
             move: {
               type: "string",
-              description: "Move in SAN format, e.g. 'e4', 'Nf3', 'O-O'",
+              description:
+                "Move in UCI notation, e.g. 'e2e4', 'g1f3', 'e1g1' (kingside castle). Do NOT use SAN format.",
             },
           },
           required: ["move"],
         },
       },
       {
-        name: "chess_get_board_state",
+        name: "get_board_state",
         description:
-          "Get the current board state as a FEN string. Call this to understand what the student is seeing before giving coaching advice.",
+          "Get the current board position as a FEN string. Call this before giving tactical or positional coaching so you know what the student is seeing.",
         parameters: {
           type: "object",
           properties: {},
@@ -48,32 +49,32 @@ const plugins: InsertPluginSchema[] = [
         },
       },
       {
-        name: "chess_get_legal_moves",
+        name: "get_legal_moves",
         description:
-          "Get all legal moves from the current position. Call this when the student asks what moves are available or when evaluating tactics.",
+          "Get all legal moves available in the current position. Call this when the student asks what they can play, or to evaluate threats and tactics. Optionally filter to moves from a specific square.",
         parameters: {
           type: "object",
           properties: {
             square: {
               type: "string",
               description:
-                "Optional: restrict to moves from a specific square, e.g. 'e2'. Omit to get all legal moves.",
+                "Optional: filter to moves originating from this square, e.g. 'e2'. Omit to get every legal move.",
             },
           },
           required: [],
         },
       },
       {
-        name: "chess_start_game",
+        name: "start_game",
         description:
-          "Start a new chess game, optionally with a specific position. Call this to reset the board.",
+          "Start a new chess game, resetting the board. Call this when the student wants to begin a fresh game or study a specific position. Optionally provide a FEN string to set a custom starting position.",
         parameters: {
           type: "object",
           properties: {
             fen: {
               type: "string",
               description:
-                "Optional FEN string for starting position. Omit to start from the standard initial position.",
+                "Optional FEN string for a custom starting position. Omit to start from the standard initial position.",
             },
           },
           required: [],
@@ -96,42 +97,25 @@ const plugins: InsertPluginSchema[] = [
     allowedRoles: ["student", "teacher"],
     toolSchemas: [
       {
-        name: "timeline_load_timeline",
+        name: "load_timeline",
         description:
-          "Load a set of historical events into the timeline app for the student to arrange. Call this to begin a new timeline activity.",
+          "Load historical events into the timeline app for the student to arrange in chronological order. Call this to begin or reset a timeline activity. Provide a topic name (e.g. 'American Civil War') — the app will generate the event set for that topic.",
         parameters: {
           type: "object",
           properties: {
-            events: {
-              type: "array",
-              description: "Array of events to load",
-              items: {
-                type: "object",
-                properties: {
-                  id: { type: "string" },
-                  title: { type: "string" },
-                  year: { type: "integer" },
-                  description: { type: "string" },
-                  category: {
-                    type: "string",
-                    enum: ["political", "cultural", "scientific", "economic", "military"],
-                  },
-                },
-                required: ["id", "title", "year", "description", "category"],
-              },
-            },
             topic: {
               type: "string",
-              description: "Topic label shown to the student, e.g. 'World War II'",
+              description:
+                "Name of the historical topic to build a timeline for, e.g. 'American Civil War', 'French Revolution', 'Space Race'.",
             },
           },
-          required: ["events", "topic"],
+          required: ["topic"],
         },
       },
       {
-        name: "timeline_validate_arrangement",
+        name: "validate_arrangement",
         description:
-          "Check whether the student's current event arrangement is chronologically correct. Call this when the student says they are done or asks for feedback.",
+          "Ask the timeline app to check whether the student's current event arrangement is chronologically correct. Call this when the student says they are finished arranging events or asks for feedback. Takes no arguments — the app evaluates its own current state.",
         parameters: {
           type: "object",
           properties: {},
@@ -155,52 +139,69 @@ const plugins: InsertPluginSchema[] = [
     allowedRoles: ["student", "teacher"],
     toolSchemas: [
       {
-        name: "artifact_search",
+        name: "search_artifacts",
         description:
-          "Search the Smithsonian Open Access collection for artifacts matching a query. Call this when the student wants to find objects to investigate.",
+          "Search the Smithsonian Open Access collection (with Library of Congress fallback) for artifacts matching a query. Call this when the student wants to find objects to investigate. Optionally filter by date range or cultural context. Results are paginated — pass page to load more.",
         parameters: {
           type: "object",
           properties: {
-            query: { type: "string", description: "Search terms, e.g. 'Civil War uniform'" },
-            category: {
+            query: {
               type: "string",
-              enum: ["art", "history", "science", "culture", "all"],
+              description: "Search terms, e.g. 'Civil War uniform', 'ancient Rome pottery'.",
             },
-            limit: { type: "integer", minimum: 1, maximum: 20, default: 10 },
+            dateRange: {
+              type: "string",
+              description: "Optional date range filter, e.g. '1860-1870'.",
+            },
+            culturalContext: {
+              type: "string",
+              description:
+                "Optional cultural context filter, e.g. 'Native American', 'Victorian England'.",
+            },
+            page: {
+              type: "integer",
+              minimum: 0,
+              description: "Zero-based page index for pagination. Defaults to 0.",
+            },
           },
-          required: ["query", "category"],
+          required: ["query"],
         },
       },
       {
-        name: "artifact_get_artifact_detail",
+        name: "get_artifact_detail",
         description:
-          "Retrieve full metadata for a specific artifact. Call this after the student selects an item from search results to load it into the investigation view.",
+          "Retrieve full metadata and images for a specific artifact by its id and source. Call this after the student selects an item from search results to load it into the investigation view. Requires the id and source ('smithsonian' or 'loc') returned by search_artifacts.",
         parameters: {
           type: "object",
           properties: {
-            artifactId: { type: "string" },
-            source: { type: "string", enum: ["smithsonian", "loc"] },
+            id: {
+              type: "string",
+              description: "Artifact id as returned by search_artifacts.",
+            },
+            source: {
+              type: "string",
+              enum: ["smithsonian", "loc"],
+              description: "API source the artifact came from.",
+            },
           },
-          required: ["artifactId", "source"],
+          required: ["id", "source"],
         },
       },
       {
-        name: "artifact_submit_investigation",
+        name: "submit_investigation",
         description:
-          "Submit the student's completed inquiry for tutor review. Call this when the student has annotated the artifact and is ready to submit their findings.",
+          "Submit the student's completed artifact investigation for tutor review. Call this when the student indicates they are finished annotating and ready to submit their reasoning chain. The app validates internally that the required fields are present — no arguments are required from the LLM.",
         parameters: {
           type: "object",
-          properties: {
-            artifactId: { type: "string" },
-            inquiryQuestion: { type: "string" },
-            conclusion: { type: "string" },
-          },
-          required: ["artifactId", "inquiryQuestion", "conclusion"],
+          properties: {},
+          required: [],
         },
       },
     ],
     manifest: {
       lifecycleType: "guided_completion",
+      systemPromptAppend:
+        "Evaluate the quality of the student's reasoning chain. Focus on: (1) whether their observations are specific and grounded in what they described seeing, (2) whether their evidence logically follows from their observations, (3) whether their claims are supported by their evidence. Do NOT evaluate whether their historical conclusion is factually correct — evaluate the quality of their reasoning process.",
     },
   },
 ];

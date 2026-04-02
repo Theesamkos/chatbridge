@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Learning Activity</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  #app {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  #board-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #rank-labels {
+    display: grid;
+    grid-template-rows: repeat(8, 1fr);
+    height: 480px;
+    width: 20px;
+    margin-bottom: 0;
+  }
+
+  .rank-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-size: 12px;
+  }
+
+  #board-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(8, 60px);
+    grid-template-rows: repeat(8, 60px);
+    border: 2px solid #4a4a6a;
+  }
+
+  .square {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.1s;
+    user-select: none;
+  }
+
+  .square.light { background: #0f3460; }
+  .square.dark  { background: #16213e; }
+
+  .square.selected { background: #b8860b !important; }
+  .square.last-move { background: #1a4a7a !important; }
+  .square.in-check { background: #8b0000 !important; }
+
+  .square.legal-move::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: rgba(80, 200, 80, 0.7);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .square.legal-capture::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 3px solid rgba(80, 200, 80, 0.7);
+    border-radius: 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .piece {
+    font-size: 40px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  #file-labels {
+    display: grid;
+    grid-template-columns: repeat(8, 60px);
+    width: 480px;
+    margin-left: 24px;
+  }
+
+  .file-label {
+    text-align: center;
+    color: #aaa;
+    font-size: 12px;
+  }
+
+  #info-panel {
+    flex: 1;
+    background: #16213e;
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  #info-panel h2 {
+    color: #ffd700;
+    font-size: 18px;
+    border-bottom: 1px solid #2a2a4e;
+    padding-bottom: 8px;
+  }
+
+  .info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .info-label {
+    color: #888;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .info-value {
+    color: #e0e0e0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .info-value.turn-white { color: #f5f5f5; }
+  .info-value.turn-black { color: #aaaaff; }
+  .info-value.status-check { color: #ff6666; }
+  .info-value.status-end   { color: #ffd700; }
+
+  #captured-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .captured-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    font-size: 20px;
+    min-height: 24px;
+    background: #1a1a2e;
+    border-radius: 4px;
+    padding: 4px;
+  }
+
+  #move-history {
+    max-height: 120px;
+    overflow-y: auto;
+    background: #1a1a2e;
+    border-radius: 4px;
+    padding: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #ccc;
+    font-family: monospace;
+  }
+
+  .btn {
+    background: #0f3460;
+    color: #e0e0e0;
+    border: 1px solid #4a4a6a;
+    border-radius: 6px;
+    padding: 10px 16px;
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+
+  .btn:hover { background: #1a4a8a; border-color: #ffd700; }
+  .btn:active { background: #0a2040; }
+  .btn.danger { background: #4a1010; border-color: #8b0000; }
+  .btn.danger:hover { background: #6a1a1a; border-color: #cc0000; }
+
+  #buttons { display: flex; flex-direction: column; gap: 8px; }
+
+  #status-message {
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #status-message.error { background: rgba(139,0,0,0.3); color: #ff9999; }
+  #status-message.success { background: rgba(0,100,0,0.3); color: #99ff99; }
+  #status-message.info { background: rgba(0,50,100,0.3); color: #99ccff; }
+
+  @media (max-width: 700px) {
+    #app { flex-direction: column; align-items: center; }
+    #board { grid-template-columns: repeat(8, 48px); grid-template-rows: repeat(8, 48px); }
+    .square { width: 48px; height: 48px; }
+    .piece { font-size: 32px; }
+    #file-labels { grid-template-columns: repeat(8, 48px); width: 384px; }
+    #rank-labels { height: 384px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="board-section">
+    <div id="board-row">
+      <div id="rank-labels">
+        <div class="rank-label">8</div>
+        <div class="rank-label">7</div>
+        <div class="rank-label">6</div>
+        <div class="rank-label">5</div>
+        <div class="rank-label">4</div>
+        <div class="rank-label">3</div>
+        <div class="rank-label">2</div>
+        <div class="rank-label">1</div>
+      </div>
+      <div id="board"></div>
+    </div>
+    <div id="file-labels">
+      <div class="file-label">a</div>
+      <div class="file-label">b</div>
+      <div class="file-label">c</div>
+      <div class="file-label">d</div>
+      <div class="file-label">e</div>
+      <div class="file-label">f</div>
+      <div class="file-label">g</div>
+      <div class="file-label">h</div>
+    </div>
+  </div>
+
+  <div id="info-panel">
+    <h2>Chess</h2>
+
+    <div class="info-row">
+      <span class="info-label">Turn</span>
+      <span class="info-value" id="turn-display">White</span>
+    </div>
+
+    <div class="info-row">
+      <span class="info-label">Move #</span>
+      <span class="info-value" id="move-number">1</span>
+    </div>
+
+    <div class="info-row">
+      <span class="info-label">Status</span>
+      <span class="info-value" id="game-status">Active</span>
+    </div>
+
+    <div id="captured-section">
+      <div class="info-label">Captured by White</div>
+      <div class="captured-row" id="captured-by-white"></div>
+      <div class="info-label">Captured by Black</div>
+      <div class="captured-row" id="captured-by-black"></div>
+    </div>
+
+    <div class="info-row">
+      <span class="info-label">Move History</span>
+      <div id="move-history"></div>
+    </div>
+
+    <div id="status-message" class="info"></div>
+
+    <div id="buttons">
+      <button class="btn" id="new-game-btn" onclick="handleNewGame()">New Game</button>
+      <button class="btn danger" id="resign-btn" onclick="handleResign()">Resign</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Plugin bridge state ───────────────────────────────────────────────────
+let sessionId = null;
+let pluginId = 'chess';
+let conversationId = null;
+let registeredOrigin = null;
+let gameOver = false;
+
+// ─── Chess engine ──────────────────────────────────────────────────────────
+let chess = new Chess();
+
+// ─── Board interaction state ───────────────────────────────────────────────
+let selectedSquare = null;
+let legalMovesForSelected = [];
+let lastMoveSquares = [];
+
+// ─── Piece unicode map ─────────────────────────────────────────────────────
+const PIECE_MAP = {
+  'wk': '♔', 'wq': '♕', 'wr': '♖', 'wb': '♗', 'wn': '♘', 'wp': '♙',
+  'bk': '♚', 'bq': '♛', 'br': '♜', 'bb': '♝', 'bn': '♞', 'bp': '♟'
+};
+
+const STARTING_PIECES = { p: 8, r: 2, n: 2, b: 2, q: 1, k: 1 };
+
+// ─── Board rendering ───────────────────────────────────────────────────────
+function squareName(row, col) {
+  const files = 'abcdefgh';
+  return files[col] + (8 - row);
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+
+  const boardArr = chess.board();
+  const kingSquare = findKingInCheck();
+  const legalSet = new Set(legalMovesForSelected.map(m => m.to));
+  const legalCaptureSet = new Set(
+    legalMovesForSelected.filter(m => m.flags.includes('c') || m.flags.includes('e')).map(m => m.to)
+  );
+
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const sq = squareName(row, col);
+      const isLight = (row + col) % 2 === 0;
+      const div = document.createElement('div');
+      div.className = 'square ' + (isLight ? 'light' : 'dark');
+      div.dataset.square = sq;
+
+      if (sq === selectedSquare) {
+        div.classList.add('selected');
+      } else if (lastMoveSquares.includes(sq)) {
+        div.classList.add('last-move');
+      }
+
+      if (kingSquare && sq === kingSquare) {
+        div.classList.add('in-check');
+      }
+
+      if (legalSet.has(sq)) {
+        if (legalCaptureSet.has(sq)) {
+          div.classList.add('legal-capture');
+        } else {
+          div.classList.add('legal-move');
+        }
+      }
+
+      const piece = boardArr[row][col];
+      if (piece) {
+        const key = piece.color + piece.type;
+        const span = document.createElement('span');
+        span.className = 'piece';
+        span.textContent = PIECE_MAP[key] || '?';
+        div.appendChild(span);
+      }
+
+      div.addEventListener('click', () => onSquareClick(sq));
+      boardEl.appendChild(div);
+    }
+  }
+}
+
+function findKingInCheck() {
+  if (!chess.in_check()) return null;
+  const turn = chess.turn();
+  const board = chess.board();
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (p && p.type === 'k' && p.color === turn) {
+        return squareName(r, c);
+      }
+    }
+  }
+  return null;
+}
+
+// ─── Board interaction ─────────────────────────────────────────────────────
+function onSquareClick(sq) {
+  if (gameOver) return;
+
+  if (selectedSquare) {
+    const isLegalDest = legalMovesForSelected.some(m => m.to === sq);
+    if (isLegalDest) {
+      // Check for promotion
+      const isPromotion = legalMovesForSelected.some(m => m.to === sq && m.flags.includes('p'));
+      let moveStr = selectedSquare + sq;
+      if (isPromotion) moveStr += 'q'; // auto-promote to queen
+
+      const result = chess.move(moveStr);
+      if (result) {
+        lastMoveSquares = [result.from, result.to];
+        selectedSquare = null;
+        legalMovesForSelected = [];
+        renderBoard();
+        updateInfo();
+        sendStateUpdate();
+        checkGameOver();
+        return;
+      }
+    }
+
+    // Deselect or select new square
+    const piece = chess.get(sq);
+    if (piece && piece.color === chess.turn()) {
+      selectSquare(sq);
+    } else {
+      selectedSquare = null;
+      legalMovesForSelected = [];
+    }
+  } else {
+    const piece = chess.get(sq);
+    if (piece && piece.color === chess.turn()) {
+      selectSquare(sq);
+    }
+  }
+
+  renderBoard();
+}
+
+function selectSquare(sq) {
+  selectedSquare = sq;
+  // Get verbose moves for this square
+  const moves = chess.moves({ square: sq, verbose: true });
+  legalMovesForSelected = moves;
+}
+
+// ─── Info panel update ─────────────────────────────────────────────────────
+function updateInfo() {
+  const turn = chess.turn() === 'w' ? 'White' : 'Black';
+  const turnEl = document.getElementById('turn-display');
+  turnEl.textContent = turn;
+  turnEl.className = 'info-value turn-' + (chess.turn() === 'w' ? 'white' : 'black');
+
+  const history = chess.history();
+  const moveNum = Math.floor(history.length / 2) + 1;
+  document.getElementById('move-number').textContent = moveNum;
+
+  let statusText = 'Active';
+  let statusClass = '';
+  if (chess.in_checkmate()) { statusText = 'Checkmate!'; statusClass = 'status-end'; }
+  else if (chess.in_stalemate()) { statusText = 'Stalemate'; statusClass = 'status-end'; }
+  else if (chess.in_draw()) { statusText = 'Draw'; statusClass = 'status-end'; }
+  else if (chess.in_check()) { statusText = 'Check!'; statusClass = 'status-check'; }
+
+  const statusEl = document.getElementById('game-status');
+  statusEl.textContent = statusText;
+  statusEl.className = 'info-value ' + statusClass;
+
+  // Captured pieces
+  const captured = getCapturedPieces();
+  document.getElementById('captured-by-white').textContent =
+    captured.white.map(p => PIECE_MAP['b' + p]).join('');
+  document.getElementById('captured-by-black').textContent =
+    captured.black.map(p => PIECE_MAP['w' + p]).join('');
+
+  // Move history
+  const histEl = document.getElementById('move-history');
+  const pairs = [];
+  for (let i = 0; i < history.length; i += 2) {
+    const moveNum2 = Math.floor(i / 2) + 1;
+    const white = history[i] || '';
+    const black = history[i + 1] || '';
+    pairs.push(moveNum2 + '. ' + white + (black ? ' ' + black : ''));
+  }
+  histEl.textContent = pairs.join('  ');
+  histEl.scrollTop = histEl.scrollHeight;
+}
+
+function getCapturedPieces() {
+  const board = chess.board();
+  const current = { w: {}, b: {} };
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (p) {
+        current[p.color][p.type] = (current[p.color][p.type] || 0) + 1;
+      }
+    }
+  }
+
+  const capturedByWhite = []; // black pieces captured (missing from board)
+  const capturedByBlack = []; // white pieces captured
+  const types = ['p', 'r', 'n', 'b', 'q'];
+
+  for (const t of types) {
+    const startCount = STARTING_PIECES[t];
+    const whiteMissing = startCount - (current.w[t] || 0);
+    const blackMissing = startCount - (current.b[t] || 0);
+    for (let i = 0; i < blackMissing; i++) capturedByWhite.push(t);
+    for (let i = 0; i < whiteMissing; i++) capturedByBlack.push(t);
+  }
+
+  return { white: capturedByWhite, black: capturedByBlack };
+}
+
+function getGameStatus() {
+  if (chess.in_checkmate()) return 'checkmate';
+  if (chess.in_stalemate()) return 'stalemate';
+  if (chess.in_draw()) return 'draw';
+  if (chess.in_check()) return 'check';
+  return 'active';
+}
+
+// ─── Game control ──────────────────────────────────────────────────────────
+function handleNewGame() {
+  chess.reset();
+  gameOver = false;
+  selectedSquare = null;
+  legalMovesForSelected = [];
+  lastMoveSquares = [];
+  renderBoard();
+  updateInfo();
+  setStatus('New game started', 'info');
+  sendStateUpdate();
+}
+
+function handleResign() {
+  if (gameOver) return;
+  gameOver = true;
+  const resigningColor = chess.turn() === 'w' ? 'White' : 'Black';
+  setStatus(resigningColor + ' resigns', 'info');
+  updateInfo();
+  sendPluginComplete('resignation', resigningColor + ' resigned.');
+}
+
+function checkGameOver() {
+  if (chess.in_checkmate()) {
+    gameOver = true;
+    const winner = chess.turn() === 'w' ? 'Black' : 'White';
+    setStatus('Checkmate! ' + winner + ' wins!', 'success');
+    sendPluginComplete('checkmate', 'Checkmate — ' + winner + ' wins!');
+  } else if (chess.in_stalemate()) {
+    gameOver = true;
+    setStatus('Stalemate — draw!', 'info');
+    sendPluginComplete('stalemate', 'Game ended in stalemate.');
+  } else if (chess.in_draw()) {
+    gameOver = true;
+    setStatus('Draw!', 'info');
+    sendPluginComplete('draw', 'Game ended in a draw.');
+  } else if (chess.in_check()) {
+    setStatus('Check!', 'error');
+  } else {
+    setStatus('', '');
+  }
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status-message');
+  el.textContent = msg;
+  el.className = type ? type : '';
+}
+
+// ─── postMessage protocol ──────────────────────────────────────────────────
+function sendMessage(data) {
+  if (!registeredOrigin) return;
+  window.parent.postMessage(data, registeredOrigin);
+}
+
+function sendStateUpdate() {
+  const captured = getCapturedPieces();
+  const state = {
+    fen: chess.fen(),
+    turn: chess.turn() === 'w' ? 'white' : 'black',
+    moveHistory: chess.history(),
+    status: getGameStatus(),
+    capturedPieces: captured,
+  };
+  sendMessage({
+    type: 'STATE_UPDATE',
+    version: 1,
+    sessionId,
+    pluginId,
+    state,
+    partial: false,
+  });
+}
+
+function sendPluginComplete(reason, summary) {
+  const captured = getCapturedPieces();
+  const finalState = {
+    fen: chess.fen(),
+    turn: chess.turn() === 'w' ? 'white' : 'black',
+    moveHistory: chess.history(),
+    status: reason,
+    capturedPieces: captured,
+  };
+  sendMessage({
+    type: 'PLUGIN_COMPLETE',
+    version: 1,
+    sessionId,
+    pluginId,
+    finalState,
+    summary,
+  });
+}
+
+function sendToolResult(toolCallId, result, isError) {
+  sendMessage({
+    type: 'TOOL_RESULT',
+    version: 1,
+    sessionId,
+    pluginId,
+    toolCallId,
+    result,
+    isError: !!isError,
+  });
+}
+
+// ─── Tool handlers ─────────────────────────────────────────────────────────
+function handleToolInvoke(msg) {
+  const { toolName, toolCallId, arguments: args } = msg;
+
+  try {
+    if (toolName === 'start_game') {
+      chess.reset();
+      gameOver = false;
+      selectedSquare = null;
+      legalMovesForSelected = [];
+      lastMoveSquares = [];
+      renderBoard();
+      updateInfo();
+      setStatus('Game started by tutor', 'info');
+      sendStateUpdate();
+      sendToolResult(toolCallId, {
+        fen: chess.fen(),
+        turn: 'white',
+        status: 'active',
+      }, false);
+
+    } else if (toolName === 'make_move') {
+      const moveArg = (args && args.move) ? args.move : null;
+      if (!moveArg) {
+        sendToolResult(toolCallId, { error: 'move argument missing' }, true);
+        return;
+      }
+      const result = chess.move(moveArg);
+      if (!result) {
+        sendToolResult(toolCallId, {
+          moveResult: 'illegal',
+          fen: chess.fen(),
+          turn: chess.turn() === 'w' ? 'white' : 'black',
+        }, false);
+        return;
+      }
+      lastMoveSquares = [result.from, result.to];
+      selectedSquare = null;
+      legalMovesForSelected = [];
+      renderBoard();
+      updateInfo();
+
+      let moveResult = 'ok';
+      if (chess.in_checkmate()) moveResult = 'checkmate';
+      else if (chess.in_stalemate()) moveResult = 'stalemate';
+      else if (chess.in_check()) moveResult = 'check';
+
+      sendStateUpdate();
+      sendToolResult(toolCallId, {
+        fen: chess.fen(),
+        turn: chess.turn() === 'w' ? 'white' : 'black',
+        moveResult,
+        lastMove: result.san,
+      }, false);
+
+      checkGameOver();
+
+    } else if (toolName === 'get_board_state') {
+      const captured = getCapturedPieces();
+      sendToolResult(toolCallId, {
+        fen: chess.fen(),
+        turn: chess.turn() === 'w' ? 'white' : 'black',
+        moveHistory: chess.history(),
+        status: getGameStatus(),
+        capturedPieces: captured,
+      }, false);
+
+    } else if (toolName === 'get_legal_moves') {
+      sendToolResult(toolCallId, {
+        moves: chess.moves(),
+      }, false);
+
+    } else {
+      sendToolResult(toolCallId, { error: 'Unknown tool: ' + toolName }, true);
+    }
+  } catch (e) {
+    sendToolResult(toolCallId, { error: String(e) }, true);
+  }
+}
+
+// ─── Message listener ──────────────────────────────────────────────────────
+window.addEventListener('message', function(event) {
+  // Security: validate origin first
+  if (registeredOrigin && event.origin !== registeredOrigin) {
+    return; // silently drop
+  }
+
+  const msg = event.data;
+  if (!msg || typeof msg !== 'object') return;
+  if (msg.version !== 1) return;
+
+  if (msg.type === 'INIT') {
+    // On first INIT, lock in the registered origin
+    registeredOrigin = event.origin;
+    sessionId = msg.sessionId;
+    pluginId = msg.pluginId || 'chess';
+    conversationId = msg.conversationId;
+
+    // Restore state if provided
+    if (msg.restoredState && msg.restoredState.fen) {
+      try {
+        chess = new Chess(msg.restoredState.fen);
+        lastMoveSquares = [];
+        selectedSquare = null;
+        legalMovesForSelected = [];
+      } catch (e) {
+        chess = new Chess();
+      }
+    } else {
+      chess = new Chess();
+    }
+
+    renderBoard();
+    updateInfo();
+
+    // Send PLUGIN_READY
+    sendMessage({
+      type: 'PLUGIN_READY',
+      version: 1,
+      sessionId,
+      pluginId,
+    });
+    return;
+  }
+
+  // For all other messages, validate session/plugin
+  if (!registeredOrigin || event.origin !== registeredOrigin) return;
+  if (msg.sessionId !== sessionId) return;
+  if (msg.pluginId !== pluginId) return;
+
+  if (msg.type === 'TOOL_INVOKE') {
+    handleToolInvoke(msg);
+  } else if (msg.type === 'PING') {
+    sendMessage({
+      type: 'PONG',
+      version: 1,
+      sessionId,
+      pluginId,
+    });
+  }
+});
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+renderBoard();
+updateInfo();
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { artifactsRouter } from "./routers/artifacts";
 import { pluginsRouter } from "./routers/plugins";
 import {
   archiveConversation,
@@ -72,6 +73,7 @@ export const appRouter = router({
 
   conversations: conversationsRouter,
   plugins: pluginsRouter,
+  artifacts: artifactsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timeline Builder Activity</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #f0f4f8;
+    color: #2d3748;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  #app {
+    max-width: 700px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  h1 {
+    color: #2d3748;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  #controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  #topic-select {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 12px;
+    border: 1.5px solid #c1cfe0;
+    border-radius: 6px;
+    background: #fff;
+    color: #2d3748;
+    font-size: 14px;
+    font-family: inherit;
+    min-height: 44px;
+    cursor: pointer;
+    appearance: auto;
+  }
+
+  #topic-select:focus {
+    outline: 2px solid #4a90d9;
+    outline-offset: 1px;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    min-height: 44px;
+    min-width: 44px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  .btn:active { transform: scale(0.97); }
+  .btn:focus { outline: 2px solid #4a90d9; outline-offset: 2px; }
+
+  .btn-primary {
+    background: #4a90d9;
+    color: #fff;
+  }
+  .btn-primary:hover { background: #357abd; }
+  .btn-primary:disabled {
+    background: #a0b8d0;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-success {
+    background: #38a169;
+    color: #fff;
+  }
+  .btn-success:hover { background: #2f855a; }
+
+  #activity-area {
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  #activity-area.visible { display: flex; }
+
+  #activity-heading {
+    font-size: 16px;
+    font-weight: 600;
+    color: #4a5568;
+    text-align: center;
+  }
+
+  #topic-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2d3748;
+    text-align: center;
+  }
+
+  #card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 60px;
+    padding: 4px;
+  }
+
+  .event-card {
+    background: #fff;
+    border: 2px solid #c1cfe0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    cursor: grab;
+    transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
+    position: relative;
+    user-select: none;
+  }
+
+  .event-card:hover {
+    box-shadow: 0 4px 12px rgba(74,144,217,0.2);
+    border-color: #4a90d9;
+  }
+
+  .event-card.dragging {
+    opacity: 0.45;
+    cursor: grabbing;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  }
+
+  .event-card.drag-over {
+    border-color: #4a90d9;
+    background: #eef4fb;
+    box-shadow: 0 0 0 3px rgba(74,144,217,0.3);
+  }
+
+  .event-card.correct {
+    border-color: #38a169;
+    background: #f0fff4;
+  }
+
+  .event-card.incorrect {
+    border-color: #e53e3e;
+    background: #fff5f5;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .drag-handle {
+    color: #a0aec0;
+    font-size: 18px;
+    flex-shrink: 0;
+    cursor: grab;
+    line-height: 1;
+  }
+
+  .card-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: #2d3748;
+    flex: 1;
+  }
+
+  .card-year {
+    font-size: 13px;
+    font-weight: 700;
+    color: #4a90d9;
+    background: #eef4fb;
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: none;
+    flex-shrink: 0;
+  }
+
+  .card-year.visible { display: block; }
+
+  .card-description {
+    font-size: 13px;
+    color: #718096;
+    line-height: 1.5;
+    padding-left: 28px;
+  }
+
+  .card-feedback {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 22px;
+    display: none;
+  }
+
+  .card-feedback.visible { display: block; }
+
+  #drop-indicator {
+    height: 4px;
+    background: #4a90d9;
+    border-radius: 2px;
+    display: none;
+    margin: -7px 0;
+    pointer-events: none;
+  }
+
+  #submit-row {
+    display: flex;
+    justify-content: center;
+    padding-top: 4px;
+  }
+
+  #result-banner {
+    display: none;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  #result-banner.visible { display: block; }
+  #result-banner.good { background: #f0fff4; color: #276749; border: 1.5px solid #38a169; }
+  #result-banner.ok   { background: #fffaf0; color: #7b4a00; border: 1.5px solid #d69e2e; }
+  #result-banner.poor { background: #fff5f5; color: #822727; border: 1.5px solid #e53e3e; }
+
+  #status-msg {
+    text-align: center;
+    font-size: 13px;
+    color: #718096;
+    min-height: 20px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .event-card, .btn { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>Timeline Builder</h1>
+
+  <div id="controls">
+    <select id="topic-select" aria-label="Select a history topic">
+      <option value="">-- Select a topic --</option>
+      <option value="American Civil War">American Civil War</option>
+      <option value="American Revolution">American Revolution</option>
+      <option value="Ancient Rome">Ancient Rome</option>
+      <option value="World War II">World War II</option>
+      <option value="Space Race">Space Race</option>
+    </select>
+    <button class="btn btn-primary" id="load-btn" onclick="handleLoadTopic()">Load Topic</button>
+  </div>
+
+  <div id="activity-area">
+    <div id="topic-title"></div>
+    <div id="activity-heading">Arrange these events in chronological order</div>
+    <div id="card-list" role="list" aria-label="Timeline events to arrange"></div>
+    <div id="status-msg"></div>
+    <div id="result-banner"></div>
+    <div id="submit-row">
+      <button class="btn btn-success" id="submit-btn" onclick="handleSubmit()" disabled>
+        Submit Arrangement
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Data ──────────────────────────────────────────────────────────────────
+const TOPICS = {
+  "American Civil War": [
+    { id: "acw1", title: "Battle of Fort Sumter", year: 1861, description: "Confederate forces attack the Union garrison, starting the Civil War." },
+    { id: "acw2", title: "Emancipation Proclamation", year: 1863, description: "Lincoln declares enslaved people in Confederate states to be free." },
+    { id: "acw3", title: "Battle of Gettysburg", year: 1863, description: "Three-day battle that turned the tide in favor of the Union." },
+    { id: "acw4", title: "Sherman's March to the Sea", year: 1864, description: "Union forces sweep through Georgia, destroying Confederate infrastructure." },
+    { id: "acw5", title: "Surrender at Appomattox", year: 1865, description: "Lee surrenders to Grant, effectively ending the Civil War." },
+    { id: "acw6", title: "13th Amendment Ratified", year: 1865, description: "Constitutional amendment abolishing slavery throughout the United States." }
+  ],
+  "American Revolution": [
+    { id: "ar1", title: "Boston Massacre", year: 1770, description: "British soldiers kill five colonists, fueling anti-British sentiment." },
+    { id: "ar2", title: "Boston Tea Party", year: 1773, description: "Colonists dump British tea into Boston Harbor to protest taxation." },
+    { id: "ar3", title: "Battles of Lexington and Concord", year: 1775, description: "First military engagements of the Revolutionary War." },
+    { id: "ar4", title: "Declaration of Independence", year: 1776, description: "The thirteen colonies formally declare independence from Britain." },
+    { id: "ar5", title: "Winter at Valley Forge", year: 1777, description: "Continental Army endures brutal winter, emerging stronger and more disciplined." },
+    { id: "ar6", title: "Treaty of Paris", year: 1783, description: "Britain recognizes American independence, ending the Revolutionary War." }
+  ],
+  "Ancient Rome": [
+    { id: "rome1", title: "Assassination of Julius Caesar", year: -44, description: "Caesar is killed by senators on the Ides of March, triggering civil war." },
+    { id: "rome2", title: "Augustus Becomes First Emperor", year: -27, description: "Octavian becomes Augustus, founding the Roman Empire." },
+    { id: "rome3", title: "Colosseum Completed", year: 80, description: "The Flavian Amphitheatre opens, seating 50,000 spectators." },
+    { id: "rome4", title: "Eruption of Mount Vesuvius", year: 79, description: "Pompeii and Herculaneum are buried under volcanic ash." },
+    { id: "rome5", title: "Constantine's Conversion", year: 312, description: "Emperor Constantine converts to Christianity, transforming the Empire." },
+    { id: "rome6", title: "Fall of the Western Roman Empire", year: 476, description: "Odoacer deposes Romulus Augustulus, ending Western Rome." }
+  ],
+  "World War II": [
+    { id: "ww2_1", title: "Germany Invades Poland", year: 1939, description: "Nazi Germany launches a blitzkrieg invasion, triggering declarations of war." },
+    { id: "ww2_2", title: "Battle of Britain", year: 1940, description: "The RAF defeats the Luftwaffe, preventing a German invasion of Britain." },
+    { id: "ww2_3", title: "Attack on Pearl Harbor", year: 1941, description: "Japan's surprise attack brings the United States into the war." },
+    { id: "ww2_4", title: "D-Day Invasion", year: 1944, description: "Allied forces land at Normandy in the largest seaborne invasion in history." },
+    { id: "ww2_5", title: "V-E Day", year: 1945, description: "Germany surrenders unconditionally, ending the war in Europe." },
+    { id: "ww2_6", title: "Atomic Bombs on Japan", year: 1945, description: "The US drops atomic bombs on Hiroshima and Nagasaki, ending the Pacific war." }
+  ],
+  "Space Race": [
+    { id: "space1", title: "Sputnik Launch", year: 1957, description: "The Soviet Union launches the first artificial Earth satellite." },
+    { id: "space2", title: "Yuri Gagarin in Orbit", year: 1961, description: "Gagarin becomes the first human in space, orbiting Earth once." },
+    { id: "space3", title: "John Glenn Orbits Earth", year: 1962, description: "Glenn becomes the first American to orbit Earth." },
+    { id: "space4", title: "Apollo 1 Fire", year: 1967, description: "A cabin fire kills three astronauts, setting back the moon program." },
+    { id: "space5", title: "Apollo 11 Moon Landing", year: 1969, description: "Armstrong and Aldrin become the first humans to walk on the Moon." },
+    { id: "space6", title: "Apollo 13 Crisis", year: 1970, description: "An explosion cripples the spacecraft; crew survives through improvisation." }
+  ]
+};
+
+// ─── Plugin bridge state ───────────────────────────────────────────────────
+let sessionId = null;
+let pluginId = 'timeline';
+let conversationId = null;
+let registeredOrigin = null;
+
+// ─── App state ─────────────────────────────────────────────────────────────
+let currentTopic = null;
+let currentEvents = []; // ordered array of event objects (student's current order)
+let correctOrder = [];  // sorted by year
+let submitted = false;
+
+// ─── Drag state ────────────────────────────────────────────────────────────
+let dragSrcId = null;
+let dragOverId = null;
+
+// ─── Utility ───────────────────────────────────────────────────────────────
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  // Ensure it's not already in the correct order
+  const correct = [...arr].sort((x, y) => x.year - y.year);
+  if (JSON.stringify(a.map(e => e.id)) === JSON.stringify(correct.map(e => e.id))) {
+    if (a.length > 1) { [a[0], a[1]] = [a[1], a[0]]; }
+  }
+  return a;
+}
+
+// ─── Rendering ─────────────────────────────────────────────────────────────
+function renderCards(revealYears, feedback) {
+  const list = document.getElementById('card-list');
+  list.innerHTML = '';
+
+  currentEvents.forEach(function(event, idx) {
+    const card = document.createElement('div');
+    card.className = 'event-card';
+    card.dataset.id = event.id;
+    card.draggable = !submitted;
+    card.setAttribute('role', 'listitem');
+
+    if (feedback) {
+      const isCorrect = feedback[event.id];
+      card.classList.add(isCorrect ? 'correct' : 'incorrect');
+    }
+
+    card.innerHTML =
+      '<div class="card-header">' +
+        '<span class="drag-handle" aria-hidden="true">&#8942;&#8942;</span>' +
+        '<span class="card-title">' + escHtml(event.title) + '</span>' +
+        '<span class="card-year' + (revealYears ? ' visible' : '') + '">' + formatYear(event.year) + '</span>' +
+      '</div>' +
+      '<div class="card-description">' + escHtml(event.description) + '</div>' +
+      (feedback
+        ? '<div class="card-feedback visible">' + (feedback[event.id] ? '&#10003;' : '&#10007;') + '</div>'
+        : '') ;
+
+    if (!submitted) {
+      card.addEventListener('dragstart', onDragStart);
+      card.addEventListener('dragend', onDragEnd);
+      card.addEventListener('dragover', onDragOver);
+      card.addEventListener('dragenter', onDragEnter);
+      card.addEventListener('dragleave', onDragLeave);
+      card.addEventListener('drop', onDrop);
+    }
+
+    list.appendChild(card);
+  });
+
+  document.getElementById('submit-btn').disabled = submitted || currentEvents.length === 0;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatYear(y) {
+  if (y < 0) return Math.abs(y) + ' BCE';
+  return y + ' CE';
+}
+
+// ─── Drag and Drop ─────────────────────────────────────────────────────────
+function onDragStart(e) {
+  dragSrcId = e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragSrcId);
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  // Remove all drag-over classes
+  document.querySelectorAll('.event-card').forEach(function(c) {
+    c.classList.remove('drag-over');
+  });
+  dragSrcId = null;
+  dragOverId = null;
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onDragEnter(e) {
+  const card = e.currentTarget;
+  if (card.dataset.id === dragSrcId) return;
+  document.querySelectorAll('.event-card').forEach(function(c) {
+    c.classList.remove('drag-over');
+  });
+  card.classList.add('drag-over');
+  dragOverId = card.dataset.id;
+}
+
+function onDragLeave(e) {
+  // Only remove if we're actually leaving the card (not a child element)
+  const related = e.relatedTarget;
+  if (!e.currentTarget.contains(related)) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  const targetId = e.currentTarget.dataset.id;
+  if (!dragSrcId || targetId === dragSrcId) return;
+
+  const srcIdx = currentEvents.findIndex(function(ev) { return ev.id === dragSrcId; });
+  const tgtIdx = currentEvents.findIndex(function(ev) { return ev.id === targetId; });
+
+  if (srcIdx === -1 || tgtIdx === -1) return;
+
+  const moved = currentEvents.splice(srcIdx, 1)[0];
+  currentEvents.splice(tgtIdx, 0, moved);
+
+  e.currentTarget.classList.remove('drag-over');
+  renderCards(false, null);
+  sendStateUpdate();
+}
+
+// ─── Activity logic ─────────────────────────────────────────────────────────
+function loadTopic(topicName, restoredOrder) {
+  const events = TOPICS[topicName];
+  if (!events) return false;
+
+  currentTopic = topicName;
+  submitted = false;
+  correctOrder = [...events].sort(function(a, b) { return a.year - b.year; });
+
+  if (restoredOrder && restoredOrder.length === events.length) {
+    // Restore order from saved IDs
+    const byId = {};
+    events.forEach(function(e) { byId[e.id] = e; });
+    currentEvents = restoredOrder.map(function(id) { return byId[id]; }).filter(Boolean);
+    if (currentEvents.length !== events.length) {
+      currentEvents = shuffle(events);
+    }
+  } else {
+    currentEvents = shuffle(events);
+  }
+
+  document.getElementById('topic-title').textContent = topicName;
+  document.getElementById('topic-select').value = topicName;
+  document.getElementById('activity-area').classList.add('visible');
+  document.getElementById('result-banner').classList.remove('visible');
+  document.getElementById('status-msg').textContent = '';
+  renderCards(false, null);
+  return true;
+}
+
+function handleLoadTopic() {
+  const sel = document.getElementById('topic-select').value;
+  if (!sel) {
+    document.getElementById('status-msg').textContent = 'Please select a topic first.';
+    return;
+  }
+  const ok = loadTopic(sel, null);
+  if (ok) {
+    document.getElementById('status-msg').textContent = 'Drag the cards to put them in the correct order.';
+    sendStateUpdate();
+  }
+}
+
+function validateArrangement() {
+  const studentOrder = currentEvents.map(function(e) { return e.id; });
+  const correctIds = correctOrder.map(function(e) { return e.id; });
+
+  const perItemCorrectness = {};
+  studentOrder.forEach(function(id, idx) {
+    perItemCorrectness[id] = correctIds[idx] === id;
+  });
+
+  const score = Object.values(perItemCorrectness).filter(Boolean).length;
+
+  return {
+    score: score,
+    total: correctIds.length,
+    correctOrder: correctOrder.map(function(e) { return { id: e.id, title: e.title, year: e.year }; }),
+    studentOrder: studentOrder,
+    perItemCorrectness: perItemCorrectness,
+  };
+}
+
+function handleSubmit() {
+  if (!currentTopic || submitted) return;
+  submitted = true;
+
+  const result = validateArrangement();
+  const pct = result.score / result.total;
+
+  // Show feedback on cards
+  renderCards(true, result.perItemCorrectness);
+
+  // Show banner
+  const banner = document.getElementById('result-banner');
+  let cls, msg;
+  if (pct === 1) {
+    cls = 'good';
+    msg = 'Perfect! All ' + result.total + ' events in the correct order!';
+  } else if (pct >= 0.5) {
+    cls = 'ok';
+    msg = result.score + ' of ' + result.total + ' events in the correct position. Good effort!';
+  } else {
+    cls = 'poor';
+    msg = result.score + ' of ' + result.total + ' events correct. Keep studying!';
+  }
+  banner.textContent = msg;
+  banner.className = 'result-banner visible ' + cls;
+
+  document.getElementById('status-msg').textContent = 'Years revealed. Review the correct order above.';
+  document.getElementById('submit-btn').disabled = true;
+
+  sendStateUpdate();
+  sendPluginComplete(result);
+}
+
+// ─── postMessage protocol ──────────────────────────────────────────────────
+function sendMsg(data) {
+  if (!registeredOrigin) return;
+  window.parent.postMessage(data, registeredOrigin);
+}
+
+function sendStateUpdate() {
+  if (!currentTopic) return;
+  sendMsg({
+    type: 'STATE_UPDATE',
+    version: 1,
+    sessionId: sessionId,
+    pluginId: pluginId,
+    state: {
+      topic: currentTopic,
+      orderedEventIds: currentEvents.map(function(e) { return e.id; }),
+      submitted: submitted,
+    },
+    partial: false,
+  });
+}
+
+function sendPluginComplete(result) {
+  sendMsg({
+    type: 'PLUGIN_COMPLETE',
+    version: 1,
+    sessionId: sessionId,
+    pluginId: pluginId,
+    finalState: {
+      topic: currentTopic,
+      orderedEventIds: currentEvents.map(function(e) { return e.id; }),
+      score: result.score,
+      total: result.total,
+      submitted: true,
+    },
+    summary: 'Student completed the ' + currentTopic + ' timeline. Score: ' + result.score + '/' + result.total + '.',
+  });
+}
+
+function sendToolResult(toolCallId, result, isError) {
+  sendMsg({
+    type: 'TOOL_RESULT',
+    version: 1,
+    sessionId: sessionId,
+    pluginId: pluginId,
+    toolCallId: toolCallId,
+    result: result,
+    isError: !!isError,
+  });
+}
+
+// ─── Tool handlers ─────────────────────────────────────────────────────────
+function handleToolInvoke(msg) {
+  const { toolName, toolCallId, arguments: args } = msg;
+
+  try {
+    if (toolName === 'load_timeline') {
+      const topic = args && args.topic;
+      if (!topic || !TOPICS[topic]) {
+        sendToolResult(toolCallId, { error: 'Topic not found: ' + topic }, true);
+        return;
+      }
+      loadTopic(topic, null);
+      sendStateUpdate();
+      sendToolResult(toolCallId, {
+        events: currentEvents.map(function(e) { return { id: e.id, title: e.title, description: e.description }; }),
+        topic: topic,
+      }, false);
+
+    } else if (toolName === 'validate_arrangement') {
+      if (!currentTopic) {
+        sendToolResult(toolCallId, { error: 'No topic loaded' }, true);
+        return;
+      }
+      if (!submitted) {
+        submitted = true;
+        const result = validateArrangement();
+        renderCards(true, result.perItemCorrectness);
+
+        const pct = result.score / result.total;
+        const banner = document.getElementById('result-banner');
+        let cls, bannerMsg;
+        if (pct === 1) { cls = 'good'; bannerMsg = 'Perfect! All ' + result.total + ' events correct!'; }
+        else if (pct >= 0.5) { cls = 'ok'; bannerMsg = result.score + '/' + result.total + ' correct.'; }
+        else { cls = 'poor'; bannerMsg = result.score + '/' + result.total + ' correct.'; }
+        banner.textContent = bannerMsg;
+        banner.className = 'result-banner visible ' + cls;
+        document.getElementById('submit-btn').disabled = true;
+
+        sendStateUpdate();
+        const full = validateArrangement();
+        sendToolResult(toolCallId, full, false);
+        sendPluginComplete(full);
+      } else {
+        const result = validateArrangement();
+        sendToolResult(toolCallId, result, false);
+      }
+
+    } else {
+      sendToolResult(toolCallId, { error: 'Unknown tool: ' + toolName }, true);
+    }
+  } catch (e) {
+    sendToolResult(toolCallId, { error: String(e) }, true);
+  }
+}
+
+// ─── Message listener ──────────────────────────────────────────────────────
+window.addEventListener('message', function(event) {
+  // Security: validate origin first — on INIT we capture it, afterwards we check it
+  if (registeredOrigin && event.origin !== registeredOrigin) {
+    return;
+  }
+
+  const msg = event.data;
+  if (!msg || typeof msg !== 'object') return;
+  if (msg.version !== 1) return;
+
+  if (msg.type === 'INIT') {
+    registeredOrigin = event.origin;
+    sessionId = msg.sessionId;
+    pluginId = msg.pluginId || 'timeline';
+    conversationId = msg.conversationId;
+
+    // Restore state
+    if (msg.restoredState && msg.restoredState.topic) {
+      const rs = msg.restoredState;
+      loadTopic(rs.topic, rs.orderedEventIds || null);
+      if (rs.submitted) {
+        submitted = true;
+        const result = validateArrangement();
+        renderCards(true, result.perItemCorrectness);
+        document.getElementById('submit-btn').disabled = true;
+      }
+    }
+
+    sendMsg({
+      type: 'PLUGIN_READY',
+      version: 1,
+      sessionId: sessionId,
+      pluginId: pluginId,
+    });
+    return;
+  }
+
+  // Validate for all subsequent messages
+  if (!registeredOrigin || event.origin !== registeredOrigin) return;
+  if (msg.sessionId !== sessionId) return;
+  if (msg.pluginId !== pluginId) return;
+
+  if (msg.type === 'TOOL_INVOKE') {
+    handleToolInvoke(msg);
+  } else if (msg.type === 'PING') {
+    sendMsg({
+      type: 'PONG',
+      version: 1,
+      sessionId: sessionId,
+      pluginId: pluginId,
+    });
+  }
+});
+</script>
+</body>
+</html>
