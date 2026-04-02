@@ -98,15 +98,15 @@
 - [x] PluginBridge.test.ts — 5 new lifecycle tests (PLUGIN_COMPLETE, PLUGIN_ERROR fatal/soft, partial STATE_UPDATE, sendPing)
 - [x] Test suite: 96/96 passing (up from 91)
 
-## Phase 3: Chess App Integration (CURRENT)
+## Phase 3: Chess App Integration (COMPLETED — checkpoint 6dad817d)
 
-- [ ] Inspect current chess app, plugin infrastructure, context assembly, and state pipeline
-- [ ] Rebuild chess app: chess.js 0.10.3, structured ChessState model, FEN validation, premium UI
-- [ ] Implement all 5 chess tools: start_game, make_move, get_board_state, get_legal_moves, get_help
-- [ ] Wire chess STATE_UPDATE into plugin state persistence pipeline
-- [ ] Wire chess state into LLM context assembly (inject FEN + game status into system prompt)
-- [ ] Add chess-specific error handling: illegal move, malformed FEN, timeout, desync
-- [ ] Add chess vitest coverage: state validation, tool handlers, FEN sanitization
-- [ ] Run full test suite (target: 100+ tests)
-- [ ] Save Phase 3 checkpoint
-- [ ] Write and deliver Phase 3 implementation report
+- [x] Inspect current chess app, plugin infrastructure, context assembly, and state pipeline
+- [x] Rebuilt chess app: full chess engine (no external deps), structured ChessState model, FEN validation, premium UI
+- [x] Implement all 5 chess tools: start_game, make_move, get_board_state, get_legal_moves, get_help
+- [x] Wire chess STATE_UPDATE into plugin state persistence pipeline
+- [x] Wire chess state into LLM context assembly (inject FEN + game status + grounding rules into system prompt)
+- [x] Add chess-specific error handling: illegal move, malformed FEN, timeout, desync
+- [x] Add chess vitest coverage: 6 new tests (grounding rules, Teach Me Mode, get_help tool, FEN injection protection)
+- [x] Run full test suite — 102/102 passing (up from 96)
+- [x] Save Phase 3 checkpoint (6dad817d)
+- [x] Write and deliver Phase 3 implementation report

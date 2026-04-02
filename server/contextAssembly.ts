@@ -96,27 +96,42 @@ export async function assembleContext(
 
     const pluginSchema = await getPluginSchema(activePluginId);
     if (pluginSchema) {
-      tools = pluginSchema.toolSchemas as Array<Record<string, unknown>>;
+      // Wrap raw function definitions into the { type: "function", function: {...} } format
+      // required by invokeLLM / OpenAI-compatible APIs.
+      const rawSchemas = pluginSchema.toolSchemas as Array<Record<string, unknown>>;
+      tools = rawSchemas.map(schema =>
+        schema.type === "function" ? schema : { type: "function", function: schema }
+      );
     }
   }
 
   // 7. Build system message
   let systemMessage = BASE_SYSTEM_MESSAGE;
+
+  // Always inject chess tool instructions when chess plugin is active (even before first move)
+  if (activePluginId === "chess") {
+    systemMessage +=
+      "\n\n## CHESS PLUGIN ACTIVE — MANDATORY TOOL USAGE\n" +
+      "You MUST use the provided chess tools for ALL chess interactions. This is non-negotiable.\n" +
+      "Available tools: start_game, make_move, get_board_state, get_legal_moves, get_help.\n\n" +
+      "RULES YOU MUST FOLLOW:\n" +
+      "1. When the student asks to start a game OR play a move in the same message: call start_game FIRST, then call make_move.\n" +
+      "2. When the student asks to make a move: call make_move with UCI notation (e.g. 'e2e4', 'g1f3', 'e1g1').\n" +
+      "3. NEVER say you cannot make moves. You CAN and MUST make moves by calling make_move.\n" +
+      "4. NEVER describe moves in text without calling the tool — always execute them.\n" +
+      "5. If unsure of the position, call get_board_state or get_help first.\n" +
+      "6. Use UCI notation ONLY for make_move (source square + destination square, e.g. 'e2e4').\n" +
+      "7. If make_move returns an error, acknowledge it and ask what the student intended.";
+  }
+
   if (activePluginId && pluginState !== null) {
     const pluginSchema = await getPluginSchema(activePluginId);
     const pluginName = pluginSchema?.name ?? activePluginId;
     systemMessage +=
-      `\n\nThe student is currently using the ${pluginName}. ` +
-      `Current state: ${JSON.stringify(pluginState, null, 2)}`;
+      `\n\nCurrent ${pluginName} state: ${JSON.stringify(pluginState, null, 2)}`;
 
-    // Chess-specific grounding instruction (always active)
-    if (activePluginId === "chess") {
-      systemMessage +=
-        "\n\nIMPORTANT CHESS RULES: " +
-        "(1) NEVER invent or hallucinate chess moves. Always call get_help or get_board_state first if you are unsure of the current position. " +
-        "(2) When calling make_move, use UCI notation ONLY (e.g. 'e2e4', 'g1f3'). " +
-        "(3) If make_move returns moveResult:'illegal', acknowledge the error and ask the student what they intended. " +
-        "(4) The FEN string in the plugin state is the authoritative ground truth for the board position.";
+    if (activePluginId !== "chess") {
+      // Non-chess plugin grounding (chess instructions already injected above)
     }
 
     // Teach Me Mode: inject chess-specific coaching prompt (Rule 12)
@@ -177,18 +192,44 @@ export async function summarizeOldMessages(msgs: Message[]): Promise<string> {
 
 /**
  * Convert DB message rows to the LLM Message format.
- * Maps tool_use / tool_result roles to the LLM-compatible equivalents.
+ * Properly reconstructs tool_use (assistant with tool_calls) and
+ * tool_result (tool with tool_call_id) messages for the LLM API.
  */
 function messagesToLLMFormat(msgs: Message[]): LLMMessage[] {
-  return msgs
-    .filter(m => m.role !== "system") // system messages are injected via systemMessage field
-    .map(m => {
-      const role: LLMMessage["role"] =
-        m.role === "tool_use" || m.role === "tool_result"
-          ? "tool"
-          : (m.role as LLMMessage["role"]);
-      return { role, content: m.content };
-    });
+  const result: LLMMessage[] = [];
+  for (const m of msgs) {
+    if (m.role === "system") continue; // injected via systemMessage field
+
+    if (m.role === "tool_use") {
+      // Reconstruct as assistant message with tool_calls array
+      // The last assistant message before this might need to be merged,
+      // but for simplicity emit as a standalone assistant tool_call message.
+      result.push({
+        role: "assistant",
+        content: "",
+        tool_calls: [
+          {
+            id: m.toolCallId ?? `fallback-${m.id}`,
+            type: "function",
+            function: {
+              name: m.toolName ?? "unknown",
+              arguments: m.content,
+            },
+          },
+        ],
+      } as unknown as LLMMessage);
+    } else if (m.role === "tool_result") {
+      // Reconstruct as tool message with tool_call_id
+      result.push({
+        role: "tool",
+        tool_call_id: m.toolCallId ?? `fallback-${m.id}`,
+        content: m.content,
+      } as unknown as LLMMessage);
+    } else {
+      result.push({ role: m.role as LLMMessage["role"], content: m.content });
+    }
+  }
+  return result;
 }
 
 /**

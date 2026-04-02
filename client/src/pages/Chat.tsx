@@ -423,12 +423,16 @@ export default function Chat() {
   );
 
   // ── Optimistic messages ───────────────────────────────────────────────────
-  const persistedMessages: ChatMessage[] = (activeConv?.messages ?? []).map(m => ({
-    id: m.id,
-    role: m.role === "tool_use" || m.role === "tool_result" ? "assistant" : (m.role as ChatMessage["role"]),
-    content: m.content,
-    createdAt: m.createdAt,
-  }));
+  // Filter out tool_use and tool_result messages — they are internal plumbing
+  // and should never be rendered as chat bubbles.
+  const persistedMessages: ChatMessage[] = (activeConv?.messages ?? [])
+    .filter(m => m.role !== "tool_use" && m.role !== "tool_result")
+    .map(m => ({
+      id: m.id,
+      role: m.role as ChatMessage["role"],
+      content: m.content,
+      createdAt: m.createdAt,
+    }));
 
   const [optimisticMessages, addOptimisticMessage] = useOptimistic<ChatMessage[], ChatMessage>(
     persistedMessages,

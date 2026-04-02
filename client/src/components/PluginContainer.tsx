@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { PluginLifecycleState } from "../../../shared/pluginTypes";
 
-const PLUGIN_READY_TIMEOUT_MS = 5_000;
+const PLUGIN_READY_TIMEOUT_MS = 15_000;
 
 export interface PluginContainerHandle {
   /** Forward a server-emitted tool_invoke event into the iframe and await the result. */
@@ -145,11 +145,17 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
       setCompleteSummary(null);
       isLoadingRef.current = true;
 
+      // For self-hosted plugins (iframeUrl starts with /), the origin is always
+      // the current window's origin — not the DB-stored localhost value.
+      const effectiveOrigin = schema.iframeUrl.startsWith("/")
+        ? window.location.origin
+        : schema.origin;
+
       const bridge = new PluginBridge({
         iframe,
         pluginId,
         conversationId,
-        registeredOrigin: schema.origin,
+        registeredOrigin: effectiveOrigin,
         sessionId,
         callbacks: {
           onReady() {
@@ -194,7 +200,7 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
         if (!destroyed && isLoadingRef.current) {
           isLoadingRef.current = false;
           setLifecycleState("error");
-          setErrorMessage("Plugin did not respond within 5 seconds. It may be loading slowly or unavailable.");
+          setErrorMessage("Plugin did not respond within 15 seconds. It may be loading slowly or unavailable.");
         }
       }, PLUGIN_READY_TIMEOUT_MS);
 
@@ -285,7 +291,7 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
           // Rule 1: exact sandbox — never add allow-same-origin
           sandbox="allow-scripts allow-forms allow-popups"
           // Rule 20: credentialless prevents cookie/storage inheritance
-          {...({ credentialless: true } as Record<string, unknown>)}
+          {...({ credentialless: "" } as Record<string, unknown>)}
           // Rule 39: descriptive title for screen readers
           title={`${schema.name} learning activity`}
           className={cn(

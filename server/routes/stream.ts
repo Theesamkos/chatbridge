@@ -217,6 +217,7 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
         const result = await invokeLLM({
           messages: llmMessages,
           tools: context.tools as never,
+          tool_choice: "auto",
         });
         // Accumulate token usage from each invokeLLM call
         if (result.usage) {
@@ -239,8 +240,9 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
               : "";
 
         // ── Tool call branch ───────────────────────────────────────────────
+        // NOTE: Manus Forge API (Gemini backend) returns finish_reason="stop"
+        // even when tool_calls are present. Check tool_calls existence first.
         if (
-          choice.finish_reason === "tool_calls" &&
           choice.message.tool_calls &&
           choice.message.tool_calls.length > 0
         ) {
@@ -250,15 +252,22 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
             writeEvent({ type: "token", content: textContent });
           }
 
+           // Forge API (Gemini backend) returns tool_calls without an `id` field.
+          // Assign a stable nanoid to each tool call so waitForToolResult can match them.
+          type ToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
+          const normalizedToolCalls: ToolCall[] = (choice.message.tool_calls as Array<Partial<ToolCall>>).map(tc => ({
+            type: "function" as const,
+            function: tc.function ?? { name: "", arguments: "{}" },
+            id: tc.id ?? nanoid(),
+          }));
           // Add assistant message (with tool_calls) to history
           llmMessages.push({
             role: "assistant",
             content: textContent || "",
-            tool_calls: choice.message.tool_calls,
+            tool_calls: normalizedToolCalls,
           });
-
           // Process each tool call in order
-          for (const toolCall of choice.message.tool_calls) {
+          for (const toolCall of normalizedToolCalls) {
             if (toolCallCount >= MAX_TOOL_CALLS) {
               // Rule 13: hard server-side limit
               writeEvent({ type: "error", message: "Tool call limit exceeded" });

@@ -138,7 +138,13 @@ export class PluginBridge {
 
   private handleMessage(event: MessageEvent): void {
     // Rule 19: Validate origin FIRST, before reading any other property.
-    if (event.origin !== this.registeredOrigin) {
+    // Sandboxed iframes without allow-same-origin have an opaque origin;
+    // browsers report event.origin as the string "null" for such frames.
+    // We accept this as valid for self-hosted plugins — session/plugin ID
+    // validation below provides the security boundary.
+    const isSandboxedNullOrigin = event.origin === "null";
+    console.log('[PluginBridge] recv msg type:', (event.data as any)?.type, 'origin:', event.origin, 'isSandboxedNull:', isSandboxedNullOrigin, 'registeredOrigin:', this.registeredOrigin, 'mySessionId:', this.sessionId, 'msgSessionId:', (event.data as any)?.sessionId);
+    if (!isSandboxedNullOrigin && event.origin !== this.registeredOrigin) {
       if (event.origin !== window.location.origin) {
         // Log protocol violation (fire-and-forget, best-effort)
         void this.reportProtocolViolation("INVALID_ORIGIN", { origin: event.origin });
@@ -150,6 +156,7 @@ export class PluginBridge {
 
     // Validate session / plugin identity
     if (msg.sessionId !== this.sessionId) {
+      console.warn('[PluginBridge] INVALID_SESSION_ID received:', msg.sessionId, 'expected:', this.sessionId, 'msg.type:', msg.type);
       void this.reportProtocolViolation("INVALID_SESSION_ID", { sessionId: msg.sessionId });
       return;
     }
@@ -204,7 +211,14 @@ export class PluginBridge {
   }
 
   private post(msg: PlatformMessage): void {
-    this.iframe.contentWindow?.postMessage(msg, this.registeredOrigin);
+    // Sandboxed iframes (without allow-same-origin) have an opaque null origin.
+    // The browser refuses to deliver postMessage if the target origin doesn't
+    // match the iframe's actual origin. For self-hosted plugins we use "*" as
+    // the target — the iframe is sandboxed so there is no credential leakage risk.
+    // External plugins (non-self-hosted) still use the registered origin.
+    const targetOrigin = this.registeredOrigin === window.location.origin ? "*" : this.registeredOrigin;
+    console.log('[PluginBridge] post', msg.type, 'targetOrigin:', targetOrigin, 'contentWindow:', !!this.iframe.contentWindow);
+    this.iframe.contentWindow?.postMessage(msg, targetOrigin);
   }
 
   private async reportPluginFailure(

@@ -66,7 +66,9 @@ async function startServer() {
       if (!allowedFrameOrigins.includes(o)) allowedFrameOrigins.push(o);
     }
   }
-  const frameSrc = allowedFrameOrigins.length > 0 ? allowedFrameOrigins.join(" ") : "'self'";
+  // Always include 'self' so self-hosted plugins (served from same origin) can load in iframes.
+  // Also include https: to allow the Manus proxy URL variants.
+  const frameSrc = "'self' https: " + (allowedFrameOrigins.length > 0 ? allowedFrameOrigins.join(" ") : "");
   console.log(`[CSP] frame-src: ${frameSrc}`);
 
   app.use((_req, res, next) => {
