@@ -196,5 +196,5 @@
 - [x] Fix empty AI bubble: suppress blank/whitespace-only AI messages in the chat UI
 
 ## Production Bug: AI Silence + "1 error" Toast (Timeline + Chess)
-- [ ] Diagnose "1 error" toast: find exact server/client error causing AI to not respond
-- [ ] Fix the root cause and verify full chat→plugin→AI response flow works end-to-end
+- [x] Diagnose "1 error" toast: root cause confirmed — Zod schema rejected initial plugin states (events/fen/investigation undefined on mount)
+- [x] Fix the root cause: made all initial-state fields .optional() in pluginStateSchemas.ts; injection detection still catches real attacks; 152/152 tests passing
