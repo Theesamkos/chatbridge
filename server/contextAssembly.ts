@@ -14,6 +14,7 @@ import {
   getLatestPluginState,
 } from "./db";
 import { getPluginSchema } from "./pluginAllowlist";
+import { writeAuditLog } from "./auditLog";
 
 // Rule 21: 6,000-character truncation limit for plugin state fields
 const PLUGIN_STATE_FIELD_MAX_CHARS = 6_000;
@@ -24,6 +25,18 @@ const CHARS_PER_TOKEN = 4;
 
 // Injection keys stripped from plugin state (Rule 21)
 const INJECTION_KEYS = new Set(["system", "instructions", "prompt", "ignore"]);
+
+// Injection patterns matched against string VALUES in plugin state (Task 5.7)
+const STATE_INJECTION_PATTERNS: RegExp[] = [
+  /ignore previous instructions/i,
+  /you are now/i,
+  /disregard your guidelines/i,
+  /pretend you are/i,
+  /forget everything/i,
+  /new persona/i,
+  /jailbreak/i,
+  /dan mode/i,
+];
 
 const BASE_SYSTEM_MESSAGE =
   "You are a helpful AI tutor for K-12 students. You are safe, encouraging, and educational. " +
@@ -78,7 +91,7 @@ export async function assembleContext(
   if (activePluginId) {
     const stateRow = await getLatestPluginState(conversationId, activePluginId);
     if (stateRow) {
-      pluginState = sanitizePluginState(stateRow.state as Record<string, unknown>);
+      pluginState = sanitizePluginState(stateRow.state as Record<string, unknown>, activePluginId);
     }
 
     const pluginSchema = await getPluginSchema(activePluginId);
@@ -156,12 +169,14 @@ function messagesToLLMFormat(msgs: Message[]): LLMMessage[] {
 }
 
 /**
- * Sanitize plugin state before LLM injection (Rule 21).
- * - Strips keys matching injection patterns
+ * Sanitize plugin state before LLM injection (Rule 21, Task 5.7).
+ * - Strips keys matching injection key names
+ * - Redacts string values containing injection patterns; logs to audit_logs
  * - Truncates string values longer than 6,000 characters
  */
 export function sanitizePluginState(
   state: Record<string, unknown>,
+  pluginId = "unknown",
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
@@ -169,11 +184,23 @@ export function sanitizePluginState(
     if (INJECTION_KEYS.has(key.toLowerCase())) continue;
 
     if (typeof value === "string") {
+      // Check for injection patterns in the value (Task 5.7)
+      const hasInjection = STATE_INJECTION_PATTERNS.some(p => p.test(value));
+      if (hasInjection) {
+        writeAuditLog({
+          eventType: "INJECTION_DETECTED",
+          pluginId,
+          payload: { field: key, detectedIn: "plugin_state" },
+          severity: "warning",
+        }).catch(err => console.error("[AuditLog]", err));
+        result[key] = "[REDACTED]";
+        continue;
+      }
       result[key] = value.length > PLUGIN_STATE_FIELD_MAX_CHARS
         ? value.slice(0, PLUGIN_STATE_FIELD_MAX_CHARS)
         : value;
     } else if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-      result[key] = sanitizePluginState(value as Record<string, unknown>);
+      result[key] = sanitizePluginState(value as Record<string, unknown>, pluginId);
     } else {
       result[key] = value;
     }

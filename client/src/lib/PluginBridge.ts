@@ -111,6 +111,8 @@ export class PluginBridge {
     return new Promise<unknown>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingToolResults.delete(toolCallId);
+        // Report timeout to server so the circuit breaker can be incremented (Task 5.3)
+        void this.reportPluginFailure("timeout", `Tool ${toolName} timed out after ${TOOL_RESULT_TIMEOUT_MS}ms`);
         reject(new Error(`Tool result for ${toolCallId} timed out`));
       }, TOOL_RESULT_TIMEOUT_MS);
 
@@ -203,6 +205,26 @@ export class PluginBridge {
 
   private post(msg: PlatformMessage): void {
     this.iframe.contentWindow?.postMessage(msg, this.registeredOrigin);
+  }
+
+  private async reportPluginFailure(
+    failureType: string,
+    errorDetail: string,
+  ): Promise<void> {
+    try {
+      await fetch("/api/plugins/failure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pluginId: this.pluginId,
+          conversationId: this.conversationId,
+          failureType,
+          errorDetail,
+        }),
+      });
+    } catch {
+      // Best-effort — never throw from a timeout handler
+    }
   }
 
   private async reportProtocolViolation(

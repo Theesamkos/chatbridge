@@ -13,6 +13,15 @@ vi.mock("./contextAssembly", () => ({
 vi.mock("./db", () => ({
   getConversationById: vi.fn(),
   createMessage: vi.fn(),
+  createPluginFailure: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("./rateLimiter", () => ({
+  rateLimiter: { check: vi.fn() },
+}));
+
+vi.mock("./circuitBreaker", () => ({
+  circuitBreaker: { isActive: vi.fn(), recordFailure: vi.fn() },
 }));
 
 vi.mock("./_core/llm", () => ({
@@ -22,6 +31,7 @@ vi.mock("./_core/llm", () => ({
 vi.mock("./safety", () => ({
   inspectInput: vi.fn(),
   moderateOutput: vi.fn(),
+  moderateWithLLM: vi.fn(),
 }));
 
 vi.mock("./auditLog", () => ({
@@ -32,7 +42,9 @@ import { sdk } from "./_core/sdk";
 import { assembleContext } from "./contextAssembly";
 import { getConversationById, createMessage } from "./db";
 import { invokeLLMStream } from "./_core/llm";
-import { inspectInput, moderateOutput } from "./safety";
+import { inspectInput, moderateWithLLM } from "./safety";
+import { rateLimiter } from "./rateLimiter";
+import { circuitBreaker } from "./circuitBreaker";
 import { writeAuditLog } from "./auditLog";
 import { streamHandler } from "./routes/stream";
 import type { Conversation } from "../drizzle/schema";
@@ -93,7 +105,10 @@ describe("POST /api/chat/stream", () => {
     vi.mocked(writeAuditLog).mockResolvedValue(undefined);
     // Default happy-path stubs
     vi.mocked(inspectInput).mockReturnValue({ passed: true, action: "allow" });
-    vi.mocked(moderateOutput).mockReturnValue({ passed: true, action: "allow" });
+    vi.mocked(moderateWithLLM).mockResolvedValue({ passed: true, action: "allow" });
+    vi.mocked(rateLimiter.check).mockReturnValue({ allowed: true, remaining: 9, resetAt: Date.now() + 60_000 });
+    vi.mocked(circuitBreaker.isActive).mockReturnValue(false);
+    vi.mocked(circuitBreaker.recordFailure).mockReturnValue(false);
     vi.mocked(sdk.authenticateRequest).mockResolvedValue({
       id: 1, openId: "u1", name: "Test", email: "t@t.com",
       role: "student", loginMethod: "email",

@@ -4,10 +4,12 @@ import type { Request, Response } from "express";
 import { sdk } from "../_core/sdk";
 import { invokeLLM, invokeLLMStream, type Message, type ToolCall } from "../_core/llm";
 import { assembleContext } from "../contextAssembly";
-import { createMessage, getConversationById } from "../db";
-import { inspectInput, moderateOutput } from "../safety";
+import { createMessage, getConversationById, createPluginFailure } from "../db";
+import { inspectInput, moderateWithLLM } from "../safety";
 import { writeAuditLog } from "../auditLog";
 import { waitForToolResult } from "./pendingToolResults";
+import { circuitBreaker } from "../circuitBreaker";
+import { rateLimiter } from "../rateLimiter";
 
 const MAX_TOOL_CALLS = 3; // Rule 13
 const TOOL_RESULT_TIMEOUT_MS = 10_000;
@@ -114,6 +116,16 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
     user = await sdk.authenticateRequest(req);
   } catch {
     writeEvent({ type: "error", message: "Authentication required" });
+    cleanup();
+    res.end();
+    return;
+  }
+
+  // ── 3b. Rate limit check (Rule 27: 10 req/min/user) ────────────────────────
+
+  const rateCheck = rateLimiter.check(`chat:${user.id}`, 10, 60_000);
+  if (!rateCheck.allowed) {
+    writeEvent({ type: "error", message: "Rate limit exceeded", code: "RATE_LIMITED", resetAt: rateCheck.resetAt });
     cleanup();
     res.end();
     return;
@@ -268,6 +280,19 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
 
             toolNames.push(toolCall.function.name);
 
+            // Circuit breaker check — skip tool if plugin is misbehaving
+            const activePluginId = context.pluginId ?? "";
+            if (activePluginId && circuitBreaker.isActive(activePluginId, conversationId)) {
+              const cbMsg = `Circuit breaker active for plugin ${activePluginId}`;
+              llmMessages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({ error: cbMsg }),
+              });
+              writeEvent({ type: "tool_result", toolCallId: toolCall.id, result: { error: cbMsg } });
+              continue;
+            }
+
             // Persist tool_use message
             await createMessage({
               id: nanoid(),
@@ -292,7 +317,31 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
             try {
               toolResult = await waitForToolResult(toolCall.id, TOOL_RESULT_TIMEOUT_MS);
             } catch (timeoutErr) {
-              writeEvent({ type: "error", message: "Tool call timed out" });
+              // Record failure server-side and check circuit breaker
+              if (activePluginId) {
+                createPluginFailure({
+                  id: nanoid(),
+                  pluginId: activePluginId,
+                  conversationId,
+                  failureType: "timeout",
+                  errorDetail: `Tool ${toolCall.function.name} timed out after ${TOOL_RESULT_TIMEOUT_MS}ms`,
+                  resolved: false,
+                }).catch(err => console.error("[stream] Failed to persist plugin failure:", err));
+
+                const tripped = circuitBreaker.recordFailure(activePluginId, conversationId);
+                if (tripped) {
+                  writeAuditLog({
+                    eventType: "CIRCUIT_OPEN",
+                    userId: user.id,
+                    conversationId,
+                    pluginId: activePluginId,
+                    payload: { reason: "tool_timeout", toolName: toolCall.function.name },
+                    severity: "critical",
+                  }).catch(err => console.error("[AuditLog]", err));
+                }
+              }
+
+              writeEvent({ type: "error", message: "Tool call timed out", code: "TOOL_TIMEOUT" });
               cleanup();
               if (!res.writableEnded) res.end();
               return;
@@ -348,7 +397,7 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
 
   // ── 8. Moderate and persist the assistant response ─────────────────────────
 
-  const modResult = moderateOutput(fullResponse);
+  const modResult = await moderateWithLLM(fullResponse, "output");
   const persistedContent =
     modResult.action === "block"
       ? "I'm sorry, I wasn't able to provide a response that meets our content guidelines."

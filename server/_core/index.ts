@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
 import { streamHandler } from "../routes/stream";
 import { toolResultHandler } from "../routes/toolResult";
+import { pluginFailureHandler } from "../routes/pluginFailure";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -44,6 +45,7 @@ async function startServer() {
   // Implementation in server/routes/stream.ts.
   app.post("/api/chat/stream", streamHandler);
   app.post("/api/chat/tool-result", toolResultHandler);
+  app.post("/api/plugins/failure", pluginFailureHandler);
 
   // tRPC API
   app.use(

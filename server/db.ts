@@ -15,8 +15,13 @@ import {
   users,
   type InsertUser,
   type InsertPluginState,
+  type InsertPluginFailure,
+  pluginFailures,
+  safetyEvents,
+  type InsertSafetyEvent,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { nanoid } from "nanoid";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -241,4 +246,44 @@ export async function getLatestPluginState(
     .orderBy(desc(pluginStates.version))
     .limit(1);
   return rows[0] ?? null;
+}
+
+export async function unfreezeConversation(conversationId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .update(conversations)
+    .set({ status: "active" })
+    .where(eq(conversations.id, conversationId));
+}
+
+// ─── Plugin failures ──────────────────────────────────────────────────────────
+
+export async function createPluginFailure(data: InsertPluginFailure): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(pluginFailures).values(data);
+}
+
+// ─── Session freeze ───────────────────────────────────────────────────────────
+
+export async function freezeConversation(
+  conversationId: string,
+  reason: string,
+  userId = 0,
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .update(conversations)
+    .set({ status: "frozen" })
+    .where(eq(conversations.id, conversationId));
+  await db.insert(safetyEvents).values({
+    id: nanoid(),
+    userId,
+    conversationId,
+    eventType: "session_frozen",
+    triggerContent: reason,
+    action: "session_frozen",
+  });
 }

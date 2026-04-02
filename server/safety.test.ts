@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { inspectInput, moderateOutput } from "./safety";
 
 // ─── inspectInput ─────────────────────────────────────────────────────────────
@@ -117,5 +117,70 @@ describe("moderateOutput", () => {
     expect(result.passed).toBe(false);
     expect(result.action).toBe("block");
     expect(result.reason).toBe("Output policy violation");
+  });
+});
+
+// ─── moderateWithLLM ──────────────────────────────────────────────────────────
+
+vi.mock("./_core/llm", () => ({
+  invokeLLM: vi.fn(),
+}));
+
+import { invokeLLM } from "./_core/llm";
+import { moderateWithLLM } from "./safety";
+
+describe("moderateWithLLM", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("returns passed: true when LLM says safe", async () => {
+    vi.mocked(invokeLLM).mockResolvedValue({
+      id: "x",
+      created: 0,
+      model: "test",
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: JSON.stringify({ safe: true }) },
+          finish_reason: "stop",
+        },
+      ],
+    });
+
+    const result = await moderateWithLLM("Great job on your essay!", "output");
+    expect(result.passed).toBe(true);
+    expect(result.action).toBe("allow");
+  });
+
+  it("returns passed: false when LLM says unsafe", async () => {
+    vi.mocked(invokeLLM).mockResolvedValue({
+      id: "x",
+      created: 0,
+      model: "test",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ safe: false, reason: "Contains violent content" }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+    });
+
+    const result = await moderateWithLLM("graphic violence description", "output");
+    expect(result.passed).toBe(false);
+    expect(result.action).toBe("block");
+    expect(result.reason).toBe("Contains violent content");
+  });
+
+  it("falls back to pattern matching when LLM throws", async () => {
+    vi.mocked(invokeLLM).mockRejectedValue(new Error("LLM unavailable"));
+
+    // Safe content: pattern matching should allow it
+    const result = await moderateWithLLM("Great explanation!", "output");
+    expect(result.passed).toBe(true);
   });
 });

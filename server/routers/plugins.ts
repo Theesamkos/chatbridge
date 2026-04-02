@@ -8,6 +8,8 @@ import {
 } from "../_core/trpc";
 import {
   createPluginSchema,
+  freezeConversation,
+  unfreezeConversation,
   getConversationById,
   getLatestPluginState,
   listPluginSchemas,
@@ -17,6 +19,7 @@ import {
 } from "../db";
 import { getPluginSchema, clearAllowlistCache } from "../pluginAllowlist";
 import { writeAuditLog } from "../auditLog";
+import { rateLimiter } from "../rateLimiter";
 
 export const pluginsRouter = router({
   // ── Conversation-scoped procedures ──────────────────────────────────────────
@@ -113,6 +116,13 @@ export const pluginsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Rate limit: 60 state updates per minute per conversation (Rule 27)
+      const stateRateKey = `state:${input.conversationId}`;
+      const stateRate = rateLimiter.check(stateRateKey, 60, 60_000);
+      if (!stateRate.allowed) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "State update rate limit exceeded" });
+      }
+
       const conversation = await getConversationById(input.conversationId);
       if (!conversation || conversation.userId !== ctx.user.id) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
@@ -204,6 +214,40 @@ export const pluginsRouter = router({
     .mutation(async ({ input }) => {
       await updatePluginStatus(input.pluginId, "disabled");
       clearAllowlistCache();
+      return { success: true } as const;
+    }),
+
+  /**
+   * Freeze a conversation (admin only). Prevents further message sends.
+   */
+  freezeConversation: adminProcedure
+    .input(z.object({ conversationId: z.string(), reason: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await freezeConversation(input.conversationId, input.reason, ctx.user.id);
+      writeAuditLog({
+        eventType: "SESSION_FROZEN",
+        userId: ctx.user.id,
+        conversationId: input.conversationId,
+        payload: { reason: input.reason },
+        severity: "warning",
+      }).catch(err => console.error("[AuditLog]", err));
+      return { success: true } as const;
+    }),
+
+  /**
+   * Unfreeze a conversation (admin only). Restores 'active' status.
+   */
+  unfreezeConversation: adminProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await unfreezeConversation(input.conversationId);
+      writeAuditLog({
+        eventType: "SESSION_UNFROZEN",
+        userId: ctx.user.id,
+        conversationId: input.conversationId,
+        payload: {},
+        severity: "info",
+      }).catch(err => console.error("[AuditLog]", err));
       return { success: true } as const;
     }),
 });

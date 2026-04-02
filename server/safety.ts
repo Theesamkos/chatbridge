@@ -8,6 +8,8 @@
  * can never block the SSE stream.
  */
 
+import { invokeLLM } from "./_core/llm";
+
 // ─── Injection patterns ───────────────────────────────────────────────────────
 
 const INJECTION_PATTERNS: RegExp[] = [
@@ -85,6 +87,8 @@ export interface ModerateResult {
   sanitized?: string;
 }
 
+export type ModerationResult = ModerateResult;
+
 /**
  * Inspect a user message before it enters the LLM pipeline (Rule 2).
  */
@@ -132,4 +136,68 @@ export function moderateOutput(response: string): ModerateResult {
   }
 
   return { passed: true, action: "allow" };
+}
+
+/**
+ * LLM-powered moderation with 3-second timeout and pattern-matching fallback (Task 5.1).
+ * Used for output moderation in the SSE streaming endpoint.
+ */
+export async function moderateWithLLM(
+  content: string,
+  contentType: "input" | "output",
+): Promise<ModerateResult> {
+  const TIMEOUT_MS = 3_000;
+
+  try {
+    const llmPromise = invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a content moderator for a K-12 educational platform. Respond with JSON only.",
+        },
+        {
+          role: "user",
+          content:
+            `Is this ${contentType} safe for students under 18? Content: ${content}\n` +
+            `Respond: {"safe": true/false, "reason": "brief reason if unsafe"}`,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "moderation",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              safe: { type: "boolean" },
+              reason: { type: "string" },
+            },
+            required: ["safe"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("LLM moderation timeout")), TIMEOUT_MS),
+    );
+
+    const result = await Promise.race([llmPromise, timeoutPromise]);
+
+    const rawContent = result.choices[0]?.message?.content;
+    const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+    const parsed = JSON.parse(text) as { safe: boolean; reason?: string };
+
+    return {
+      passed: parsed.safe,
+      reason: parsed.reason,
+      action: parsed.safe ? "allow" : "block",
+    };
+  } catch (err) {
+    console.warn("[Safety] LLM moderation failed, falling back to pattern matching:", err);
+    return moderateOutput(content);
+  }
 }
