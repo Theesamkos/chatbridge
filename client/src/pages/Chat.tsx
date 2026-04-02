@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PluginContainer, { type PluginContainerHandle } from "@/components/PluginContainer";
+import PluginPicker from "@/components/PluginPicker";
 import { RubricCard, type RubricScore } from "@/components/RubricCard";
 import { Streamdown } from "streamdown";
 
@@ -434,6 +435,14 @@ export default function Chat() {
     (state, newMsg) => [...state, newMsg],
   );
 
+  const deactivatePlugin = trpc.plugins.deactivate.useMutation({
+    onSuccess: () => {
+      utils.conversations.get.invalidate({ id: activeConvId! });
+      utils.conversations.list.invalidate();
+    },
+    onError: () => toast.error("Failed to close plugin"),
+  });
+
   const createConv = trpc.conversations.create.useMutation({
     onSuccess: conv => {
       startHistoryTransition(() => {
@@ -640,6 +649,22 @@ export default function Chat() {
             {activePluginId === "chess" && (
               <Badge variant="secondary" className="text-xs hidden sm:flex" id="teach-me-badge" />
             )}
+            {/* Plugin picker — only shown when a conversation is active */}
+            {activeConvId && (
+              <PluginPicker
+                conversationId={activeConvId}
+                activePluginId={activePluginId}
+                onActivated={() => {
+                  utils.conversations.get.invalidate({ id: activeConvId });
+                  utils.conversations.list.invalidate();
+                }}
+                onDeactivated={() => {
+                  utils.conversations.get.invalidate({ id: activeConvId });
+                  utils.conversations.list.invalidate();
+                }}
+                disabled={isStreaming}
+              />
+            )}
             {/* Dark mode toggle */}
             {switchable && toggleTheme && (
               <Button
@@ -768,11 +793,11 @@ export default function Chat() {
                       variant="ghost"
                       className="h-8 text-xs gap-1 text-muted-foreground hover:text-destructive"
                       onClick={() => {
-                        // Close plugin: set activePluginId to null via tRPC
-                        if (activeConvId) {
-                          utils.conversations.get.invalidate({ id: activeConvId });
+                        if (activeConvId && activePluginId) {
+                          deactivatePlugin.mutate({ conversationId: activeConvId });
                         }
                       }}
+                      disabled={deactivatePlugin.isPending}
                       aria-label="Close plugin"
                     >
                       <X className="h-3.5 w-3.5" />

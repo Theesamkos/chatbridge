@@ -3,238 +3,230 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mock Plugin</title>
+  <title>Mock Plugin — ChatBridge Protocol Tester</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, sans-serif;
-      font-size: 13px;
-      background: #0f172a;
-      color: #e2e8f0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a; --border: #2e3348;
+      --text: #e2e8f0; --muted: #64748b; --primary: #6366f1; --primary-light: #818cf8;
+      --success: #22c55e; --warning: #f59e0b; --error: #ef4444; --info: #3b82f6;
+      --radius: 8px; --font: system-ui, -apple-system, sans-serif; --mono: monospace;
     }
-    header {
-      background: #1e293b;
-      padding: 10px 14px;
-      border-bottom: 1px solid #334155;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    header h1 { font-size: 13px; font-weight: 600; flex: 1; }
-    .badge {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 99px;
-      background: #0ea5e9;
-      color: #fff;
-      font-weight: 600;
-    }
-    .badge.ready { background: #22c55e; }
-    .badge.error { background: #ef4444; }
-    .state-panel {
-      margin: 10px;
-      padding: 8px 10px;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      font-size: 11px;
-    }
-    .state-panel h2 { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
-    #stateDisplay { white-space: pre-wrap; color: #7dd3fc; }
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      padding: 8px 10px;
-    }
-    button {
-      padding: 5px 10px;
-      border-radius: 5px;
-      border: none;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .btn-primary { background: #3b82f6; color: #fff; }
-    .btn-success { background: #22c55e; color: #fff; }
-    .btn-danger  { background: #ef4444; color: #fff; }
-    .btn-neutral { background: #475569; color: #e2e8f0; }
-    .log-panel {
-      flex: 1;
-      overflow-y: auto;
-      margin: 0 10px 10px;
-      padding: 8px 10px;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 6px;
-    }
-    .log-panel h2 { font-size: 11px; color: #94a3b8; margin-bottom: 6px; }
-    #logList { list-style: none; }
-    #logList li {
-      font-size: 11px;
-      padding: 2px 0;
-      border-bottom: 1px solid #1e293b;
-      color: #cbd5e1;
-      font-family: monospace;
-    }
-    #logList li.inbound  { color: #7dd3fc; }
-    #logList li.outbound { color: #86efac; }
-    #logList li.info     { color: #fde68a; }
-    #logList li.err      { color: #fca5a5; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .header-icon { width: 28px; height: 28px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .header-title { font-weight: 600; font-size: 13px; }
+    .header-subtitle { font-size: 11px; color: var(--muted); }
+    .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid; transition: all 0.2s; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .status-loading { background: rgba(100,116,139,0.15); color: var(--muted); border-color: rgba(100,116,139,0.3); }
+    .status-loading .status-dot { background: var(--muted); animation: pulse 1.5s infinite; }
+    .status-ready { background: rgba(34,197,94,0.1); color: var(--success); border-color: rgba(34,197,94,0.25); }
+    .status-ready .status-dot { background: var(--success); animation: pulse 2s infinite; }
+    .status-active { background: rgba(99,102,241,0.1); color: var(--primary-light); border-color: rgba(99,102,241,0.3); }
+    .status-active .status-dot { background: var(--primary-light); }
+    .status-complete { background: rgba(59,130,246,0.1); color: var(--info); border-color: rgba(59,130,246,0.25); }
+    .status-complete .status-dot { background: var(--info); }
+    .status-error { background: rgba(239,68,68,0.1); color: var(--error); border-color: rgba(239,68,68,0.25); }
+    .status-error .status-dot { background: var(--error); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .main { display: flex; flex: 1; overflow: hidden; }
+    .controls { width: 190px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+    .controls-section { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .controls-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+    .btn { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 12px; font-family: var(--font); cursor: pointer; text-align: left; transition: all 0.15s; margin-bottom: 4px; }
+    .btn:hover { background: var(--border); border-color: var(--primary); }
+    .btn:last-child { margin-bottom: 0; }
+    .btn-primary { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); color: var(--primary-light); }
+    .btn-success { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.3); color: var(--success); }
+    .btn-warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: var(--warning); }
+    .btn-danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--error); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+    .state-display { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; font-family: var(--mono); font-size: 10px; color: var(--muted); min-height: 50px; word-break: break-all; white-space: pre-wrap; }
+    .log-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .log-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .log-header-title { font-size: 11px; font-weight: 600; color: var(--muted); }
+    .log-clear-btn { font-size: 10px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .log-clear-btn:hover { background: var(--border); color: var(--text); }
+    .log-entries { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 3px; }
+    .log-entry { display: flex; align-items: flex-start; gap: 6px; padding: 5px 8px; border-radius: 5px; border: 1px solid transparent; animation: slideIn 0.15s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .log-time { font-family: var(--mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
+    .log-dir { font-size: 10px; font-weight: 600; flex-shrink: 0; width: 28px; }
+    .log-type { font-size: 11px; font-weight: 600; flex-shrink: 0; min-width: 110px; }
+    .log-detail { font-family: var(--mono); font-size: 10px; color: var(--muted); word-break: break-all; flex: 1; }
+    .log-in { background: rgba(99,102,241,0.05); border-color: rgba(99,102,241,0.15); }
+    .log-out { background: rgba(34,197,94,0.05); border-color: rgba(34,197,94,0.15); }
+    .log-sys { background: rgba(100,116,139,0.05); border-color: rgba(100,116,139,0.15); }
+    .log-err { background: rgba(239,68,68,0.05); border-color: rgba(239,68,68,0.2); }
+    .log-in .log-dir { color: var(--primary-light); } .log-out .log-dir { color: var(--success); } .log-sys .log-dir { color: var(--muted); } .log-err .log-dir { color: var(--error); }
+    .log-in .log-type { color: var(--primary-light); } .log-out .log-type { color: var(--success); } .log-sys .log-type { color: var(--muted); } .log-err .log-type { color: var(--error); }
   </style>
 </head>
 <body>
-
-<header>
-  <h1>Mock Plugin</h1>
-  <span id="statusBadge" class="badge">waiting</span>
-</header>
-
-<div class="state-panel">
-  <h2>Current State</h2>
-  <pre id="stateDisplay">—</pre>
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">🧪</div>
+    <div><div class="header-title">Mock Plugin</div><div class="header-subtitle">Protocol Tester v2</div></div>
+  </div>
+  <div id="status-pill" class="status-pill status-loading"><div class="status-dot"></div><span id="status-label">Waiting for INIT</span></div>
 </div>
-
-<div class="actions">
-  <button class="btn-neutral" onclick="sendStateUpdate()">Send STATE_UPDATE</button>
-  <button class="btn-success" onclick="sendComplete()">Send PLUGIN_COMPLETE</button>
-  <button class="btn-danger"  onclick="sendError()">Send PLUGIN_ERROR</button>
-  <button class="btn-primary" onclick="sendPong()">Send PONG</button>
-</div>
-
-<div class="log-panel">
-  <h2>Message Log</h2>
-  <ul id="logList"></ul>
+<div class="main">
+  <div class="controls">
+    <div class="controls-section">
+      <div class="controls-section-title">Session</div>
+      <div class="state-display" id="session-display">—</div>
+    </div>
+    <div class="controls-section">
+      <div class="controls-section-title">Send Messages</div>
+      <button class="btn btn-success" id="btn-state-update" disabled>📡 STATE_UPDATE</button>
+      <button class="btn btn-success" id="btn-state-partial" disabled>🔄 STATE_UPDATE (partial)</button>
+      <button class="btn btn-warning" id="btn-complete" disabled>🏁 PLUGIN_COMPLETE</button>
+      <button class="btn btn-danger" id="btn-error-soft" disabled>⚠️ PLUGIN_ERROR (soft)</button>
+      <button class="btn btn-danger" id="btn-error-fatal" disabled>💥 PLUGIN_ERROR (fatal)</button>
+    </div>
+    <div class="controls-section">
+      <div class="controls-section-title">Auto</div>
+      <button class="btn" id="btn-auto-state" disabled>⏱ Auto STATE (5s)</button>
+      <button class="btn" id="btn-stop-auto" disabled>⏹ Stop Auto</button>
+    </div>
+    <div class="controls-section">
+      <div class="controls-section-title">Restored State</div>
+      <div class="state-display" id="restored-state-display">null</div>
+    </div>
+    <div class="controls-section">
+      <div class="controls-section-title">Current State</div>
+      <div class="state-display" id="current-state-display">{}</div>
+    </div>
+  </div>
+  <div class="log-panel">
+    <div class="log-header"><span class="log-header-title">Protocol Message Log</span><button class="log-clear-btn" id="btn-clear-log">Clear</button></div>
+    <div class="log-entries" id="log-entries">
+      <div class="log-entry log-sys"><span class="log-time">--:--:--</span><span class="log-dir">SYS</span><span class="log-type">INITIALIZED</span><span class="log-detail">Waiting for INIT from platform shell…</span></div>
+    </div>
+  </div>
 </div>
 
 <script>
   const PROTOCOL_VERSION = 1;
+  let platformOrigin = null, sessionId = null, pluginId = null, conversationId = null;
+  let currentState = {}, autoStateInterval = null, counters = { recv: 0, sent: 0, tools: 0, pings: 0 };
 
-  let sessionId   = null;
-  let pluginId    = null;
-  let parentOrigin = null;
-  let stateCounter = 0;
-  let autoStateInterval = null;
+  const logEntries = document.getElementById('log-entries');
+  const statusPill = document.getElementById('status-pill');
+  const statusLabel = document.getElementById('status-label');
 
-  const badge        = document.getElementById("statusBadge");
-  const stateDisplay = document.getElementById("stateDisplay");
-  const logList      = document.getElementById("logList");
-
-  function log(text, cls = "") {
-    const li = document.createElement("li");
-    li.className = cls;
-    li.textContent = `[${new Date().toISOString().slice(11, 23)}] ${text}`;
-    logList.prepend(li);
+  function addLog(dir, type, detail) {
+    const entry = document.createElement('div');
+    const cls = dir === 'IN' ? 'log-in' : dir === 'OUT' ? 'log-out' : dir === 'ERR' ? 'log-err' : 'log-sys';
+    entry.className = 'log-entry ' + cls;
+    const t = new Date().toTimeString().slice(0, 8);
+    entry.innerHTML = '<span class="log-time">' + t + '</span><span class="log-dir">' + dir + '</span><span class="log-type">' + type + '</span><span class="log-detail">' + (detail || '') + '</span>';
+    logEntries.appendChild(entry);
+    logEntries.scrollTop = logEntries.scrollHeight;
+    while (logEntries.children.length > 200) logEntries.removeChild(logEntries.firstChild);
   }
 
-  function setStatus(label, cls) {
-    badge.textContent = label;
-    badge.className   = "badge " + cls;
+  function setStatus(state, label) {
+    statusPill.className = 'status-pill status-' + state;
+    statusLabel.textContent = label;
   }
 
-  function post(msg) {
-    if (!parentOrigin) { log("No parentOrigin yet — cannot post", "err"); return; }
-    window.parent.postMessage(msg, parentOrigin);
-    log("→ " + msg.type + (msg.toolCallId ? " [" + msg.toolCallId + "]" : ""), "outbound");
+  function updateState(s) {
+    document.getElementById('current-state-display').textContent = JSON.stringify(s, null, 2);
   }
 
-  // ── Outbound helpers ───────────────────────────────────────────────────────
-
-  function ready() {
-    post({ type: "PLUGIN_READY", version: PROTOCOL_VERSION, sessionId, pluginId });
-    setStatus("ready", "ready");
+  function sendMessage(msg) {
+    if (!platformOrigin) { addLog('ERR', 'SEND_FAILED', 'No platform origin'); return; }
+    const envelope = Object.assign({}, msg, { version: PROTOCOL_VERSION, sessionId, pluginId, timestamp: new Date().toISOString() });
+    window.parent.postMessage(envelope, platformOrigin);
+    counters.sent++;
+    document.getElementById('cnt-sent-n').textContent = counters.sent;
+    addLog('OUT', msg.type, JSON.stringify(msg).slice(0, 100));
   }
 
-  function sendStateUpdate() {
-    stateCounter++;
-    const state = { counter: stateCounter, timestamp: Date.now(), message: "Auto state " + stateCounter };
-    stateDisplay.textContent = JSON.stringify(state, null, 2);
-    post({ type: "STATE_UPDATE", version: PROTOCOL_VERSION, sessionId, pluginId, state, partial: false });
-  }
-
-  function sendComplete() {
-    const finalState = { counter: stateCounter, complete: true };
-    stateDisplay.textContent = JSON.stringify(finalState, null, 2);
-    post({
-      type: "PLUGIN_COMPLETE",
-      version: PROTOCOL_VERSION,
-      sessionId,
-      pluginId,
-      finalState,
-      summary: "Mock plugin completed with counter=" + stateCounter,
-    });
-    setStatus("done", "ready");
-    if (autoStateInterval) clearInterval(autoStateInterval);
-  }
-
-  function sendError() {
-    post({
-      type: "PLUGIN_ERROR",
-      version: PROTOCOL_VERSION,
-      sessionId,
-      pluginId,
-      error: "Simulated plugin error from mock",
-      fatal: false,
-    });
-    setStatus("error", "error");
-  }
-
-  function sendPong() {
-    post({ type: "PONG", version: PROTOCOL_VERSION, sessionId, pluginId });
-  }
-
-  // ── Inbound handler ────────────────────────────────────────────────────────
-
-  window.addEventListener("message", function(event) {
+  window.addEventListener('message', function(event) {
     const msg = event.data;
-    if (!msg || typeof msg.type !== "string") return;
-
-    log("← " + msg.type, "inbound");
-
-    switch (msg.type) {
-      case "INIT":
-        sessionId    = msg.sessionId;
-        pluginId     = msg.pluginId;
-        parentOrigin = event.origin;
-
-        if (msg.restoredState) {
-          stateDisplay.textContent = JSON.stringify(msg.restoredState, null, 2);
-          log("Restored state received", "info");
-        }
-
-        // Send PLUGIN_READY immediately
-        ready();
-
-        // Auto-send STATE_UPDATE every 5 seconds
-        autoStateInterval = setInterval(sendStateUpdate, 5000);
-        break;
-
-      case "TOOL_INVOKE":
-        log("TOOL_INVOKE " + msg.toolName + " args=" + JSON.stringify(msg.arguments), "info");
-        // Immediately echo back a successful TOOL_RESULT
-        setTimeout(function() {
-          post({
-            type: "TOOL_RESULT",
-            version: PROTOCOL_VERSION,
-            sessionId,
-            pluginId,
-            toolCallId: msg.toolCallId,
-            result: { ok: true, toolName: msg.toolName, echo: msg.arguments },
-            isError: false,
-          });
-        }, 200);
-        break;
-
-      case "PING":
-        sendPong();
-        break;
-
-      default:
-        log("Unknown message type: " + msg.type, "err");
+    if (!msg || typeof msg !== 'object' || !msg.type) return;
+    if (msg.type === 'INIT') {
+      platformOrigin = event.origin; sessionId = msg.sessionId; pluginId = msg.pluginId; conversationId = msg.conversationId;
+      counters.recv++; document.getElementById('cnt-recv-n').textContent = counters.recv;
+      document.getElementById('session-display').textContent = JSON.stringify({ sessionId: (sessionId||'').slice(0,12)+'...', pluginId, origin: platformOrigin }, null, 2);
+      if (msg.restoredState) { document.getElementById('restored-state-display').textContent = JSON.stringify(msg.restoredState, null, 2); currentState = Object.assign({}, msg.restoredState); updateState(currentState); }
+      addLog('IN', 'INIT', 'conv=' + (conversationId||'').slice(0,8) + '... plugin=' + pluginId + ' restored=' + (msg.restoredState != null));
+      setStatus('ready', 'INIT received');
+      sendMessage({ type: 'PLUGIN_READY' });
+      document.querySelectorAll('.btn[disabled]').forEach(function(b) { b.removeAttribute('disabled'); });
+      return;
     }
+    if (event.origin !== platformOrigin) { addLog('ERR', 'INVALID_ORIGIN', 'expected=' + platformOrigin + ' got=' + event.origin); return; }
+    counters.recv++; document.getElementById('cnt-recv-n').textContent = counters.recv;
+    if (msg.type === 'TOOL_INVOKE') {
+      counters.tools++; document.getElementById('cnt-tools-n').textContent = counters.tools;
+      addLog('IN', 'TOOL_INVOKE', 'id=' + (msg.toolCallId||'').slice(0,8) + '... tool=' + msg.toolName);
+      setStatus('active', 'Tool: ' + msg.toolName);
+      setTimeout(function() {
+        currentState = Object.assign({}, currentState, { lastTool: msg.toolName, toolCount: (currentState.toolCount||0)+1, lastAt: new Date().toISOString() });
+        updateState(currentState);
+        sendMessage({ type: 'TOOL_RESULT', toolCallId: msg.toolCallId, result: { ok: true, toolName: msg.toolName, args: msg.arguments }, isError: false });
+        sendMessage({ type: 'STATE_UPDATE', state: currentState, partial: false });
+        setStatus('ready', 'Tool complete');
+      }, 200);
+    } else if (msg.type === 'PING') {
+      counters.pings++; document.getElementById('cnt-pings-n').textContent = counters.pings;
+      addLog('IN', 'PING', 'heartbeat #' + counters.pings);
+      sendMessage({ type: 'PONG' });
+    } else { addLog('IN', msg.type, JSON.stringify(msg).slice(0, 80)); }
+  });
+
+  document.getElementById('btn-state-update').addEventListener('click', function() {
+    currentState = Object.assign({}, currentState, { counter: (currentState.counter||0)+1, updatedAt: new Date().toISOString() });
+    updateState(currentState);
+    sendMessage({ type: 'STATE_UPDATE', state: currentState, partial: false });
+  });
+  document.getElementById('btn-state-partial').addEventListener('click', function() {
+    var partial = { partialField: 'p-' + Date.now(), updatedAt: new Date().toISOString() };
+    currentState = Object.assign({}, currentState, partial);
+    updateState(currentState);
+    sendMessage({ type: 'STATE_UPDATE', state: partial, partial: true });
+  });
+  document.getElementById('btn-complete').addEventListener('click', function() {
+    var finalState = Object.assign({}, currentState, { completedAt: new Date().toISOString(), status: 'completed' });
+    sendMessage({ type: 'PLUGIN_COMPLETE', finalState: finalState, summary: 'Mock session complete. ' + (finalState.toolCount||0) + ' tool calls.' });
+    setStatus('complete', 'Complete');
+    document.querySelectorAll('.btn').forEach(function(b) { b.setAttribute('disabled', ''); });
+    clearAutoState();
+  });
+  document.getElementById('btn-error-soft').addEventListener('click', function() {
+    sendMessage({ type: 'PLUGIN_ERROR', error: 'Simulated soft error (non-fatal)', fatal: false });
+  });
+  document.getElementById('btn-error-fatal').addEventListener('click', function() {
+    sendMessage({ type: 'PLUGIN_ERROR', error: 'Simulated fatal error — container will show error state', fatal: true });
+    setStatus('error', 'Fatal error');
+    document.querySelectorAll('.btn').forEach(function(b) { b.setAttribute('disabled', ''); });
+    clearAutoState();
+  });
+  document.getElementById('btn-auto-state').addEventListener('click', function() {
+    if (autoStateInterval) return;
+    addLog('SYS', 'AUTO_STATE', 'Starting periodic STATE_UPDATE every 5s');
+    autoStateInterval = setInterval(function() {
+      currentState = Object.assign({}, currentState, { autoCounter: (currentState.autoCounter||0)+1, autoAt: new Date().toISOString() });
+      updateState(currentState);
+      sendMessage({ type: 'STATE_UPDATE', state: currentState, partial: false });
+    }, 5000);
+    document.getElementById('btn-auto-state').setAttribute('disabled', '');
+    document.getElementById('btn-stop-auto').removeAttribute('disabled');
+  });
+  document.getElementById('btn-stop-auto').addEventListener('click', clearAutoState);
+  function clearAutoState() {
+    if (autoStateInterval) { clearInterval(autoStateInterval); autoStateInterval = null; addLog('SYS', 'AUTO_STATE', 'Stopped'); }
+    document.getElementById('btn-stop-auto').setAttribute('disabled', '');
+    document.getElementById('btn-auto-state').removeAttribute('disabled');
+  }
+  document.getElementById('btn-clear-log').addEventListener('click', function() {
+    logEntries.innerHTML = '';
+    addLog('SYS', 'LOG_CLEARED', 'Message log cleared');
   });
 </script>
 </body>

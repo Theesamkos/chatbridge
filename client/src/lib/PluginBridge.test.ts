@@ -217,3 +217,93 @@ describe("PluginBridge", () => {
     bridge.destroy();
   });
 });
+
+// ─── Phase 2: Lifecycle state machine tests ────────────────────────────────
+
+describe("PluginBridge — lifecycle callbacks", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+  });
+
+  it("calls onComplete with finalState and summary on PLUGIN_COMPLETE", () => {
+    const onComplete = vi.fn();
+    const { bridge } = makeBridge({ onComplete });
+
+    dispatchFromPlugin({
+      type: "PLUGIN_COMPLETE",
+      version: 1,
+      sessionId: SESSION_ID,
+      pluginId: PLUGIN_ID,
+      finalState: { score: 42 },
+      summary: "Game over — white wins",
+    });
+
+    expect(onComplete).toHaveBeenCalledWith({ score: 42 }, "Game over — white wins");
+    bridge.destroy();
+  });
+
+  it("calls onError with fatal=true on fatal PLUGIN_ERROR", () => {
+    const onError = vi.fn();
+    const { bridge } = makeBridge({ onError });
+
+    dispatchFromPlugin({
+      type: "PLUGIN_ERROR",
+      version: 1,
+      sessionId: SESSION_ID,
+      pluginId: PLUGIN_ID,
+      error: "Unrecoverable engine crash",
+      fatal: true,
+    });
+
+    expect(onError).toHaveBeenCalledWith("Unrecoverable engine crash", true);
+    bridge.destroy();
+  });
+
+  it("calls onError with fatal=false on soft PLUGIN_ERROR", () => {
+    const onError = vi.fn();
+    const { bridge } = makeBridge({ onError });
+
+    dispatchFromPlugin({
+      type: "PLUGIN_ERROR",
+      version: 1,
+      sessionId: SESSION_ID,
+      pluginId: PLUGIN_ID,
+      error: "Transient network hiccup",
+      fatal: false,
+    });
+
+    expect(onError).toHaveBeenCalledWith("Transient network hiccup", false);
+    bridge.destroy();
+  });
+
+  it("calls onStateUpdate with partial=true for partial STATE_UPDATE", () => {
+    const onStateUpdate = vi.fn();
+    const { bridge } = makeBridge({ onStateUpdate });
+
+    dispatchFromPlugin({
+      type: "STATE_UPDATE",
+      version: 1,
+      sessionId: SESSION_ID,
+      pluginId: PLUGIN_ID,
+      state: { partialField: "value" },
+      partial: true,
+    });
+
+    expect(onStateUpdate).toHaveBeenCalledWith({ partialField: "value" }, true);
+    bridge.destroy();
+  });
+
+  it("sends PING via sendPing and responds to PONG correctly", () => {
+    const { bridge, iframe } = makeBridge();
+    const postMessage = iframe.contentWindow!.postMessage as ReturnType<typeof vi.fn>;
+
+    bridge.sendPing();
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "PING", version: 1 }),
+      REGISTERED_ORIGIN,
+    );
+    bridge.destroy();
+  });
+});

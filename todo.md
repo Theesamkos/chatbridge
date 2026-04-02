@@ -87,3 +87,13 @@
 - [x] The send button in the Manus preview iframe may be blocked by the preview overlay bar (production works fine — confirmed via programmatic test)
 - [x] Input-blocked messages don't freeze the conversation (user not authenticated yet at that point — by design, documented in CLAUDE.md)
 - [x] freezeConversation integration covered by stream.test.ts (output block path tested)
+
+## Phase 2 Report Gap Items (COMPLETED)
+
+- [x] shared/pluginTypes.ts — PluginLifecycleState type union + full typed message envelope
+- [x] PluginContainer — lifecycle state machine (loading→ready→active→complete→error) with StatusPill, animated overlays, Retry button
+- [x] PluginPicker — full activation/deactivation UI with popover, plugin list, role gating, disabled-while-streaming guard
+- [x] Chat.tsx — PluginPicker wired into header; Close button calls deactivate
+- [x] Mock plugin — upgraded to Protocol Tester v2 (STATE_UPDATE, PLUGIN_COMPLETE, PLUGIN_ERROR soft/fatal, PING/PONG, auto-state, counters)
+- [x] PluginBridge.test.ts — 5 new lifecycle tests (PLUGIN_COMPLETE, PLUGIN_ERROR fatal/soft, partial STATE_UPDATE, sendPing)
+- [x] Test suite: 96/96 passing (up from 91)
