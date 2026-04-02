@@ -77,8 +77,66 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  // ── 2. SSE headers (Rule 16: flush immediately, before any async work) ──────
+  // ── 2. Authentication (sync-safe — before opening SSE) ─────────────────────
 
+  let user: Awaited<ReturnType<typeof sdk.authenticateRequest>>;
+  try {
+    user = await sdk.authenticateRequest(req);
+  } catch {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  // ── 2b. Rate limit check (Rule 27: 10 req/min/user) ─────────────────────────
+
+  const rateCheck = rateLimiter.check(`chat:${user.id}`, 10, 60_000);
+  if (!rateCheck.allowed) {
+    res.status(429).json({ error: "Rate limit exceeded", code: "RATE_LIMITED", resetAt: rateCheck.resetAt });
+    return;
+  }
+
+  // ── 3. Conversation ownership check (Rule 31) ────────────────────────────────
+
+  const conversation = await getConversationById(conversationId);
+  if (!conversation || conversation.userId !== user.id) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+
+  if (conversation.status === "frozen") {
+    res.status(403).json({ error: "Conversation is frozen", code: "CONTEXT_FROZEN" });
+    return;
+  }
+
+  // ── 4. Persist the user message ─────────────────────────────────────────────
+
+  const userMessageId = nanoid();
+  await createMessage({
+    id: userMessageId,
+    conversationId,
+    role: "user",
+    content: message,
+    moderationStatus: "passed",
+  });
+
+  // ── 5. Assemble context (Rule 15: never expose to client) ───────────────────
+  //       Timed here so Server-Timing can be set before flushing SSE headers.
+
+  const assembleStart = Date.now();
+  let context: Awaited<ReturnType<typeof assembleContext>>;
+  try {
+    context = await assembleContext(conversationId, user.id);
+  } catch (err) {
+    console.error("[stream] Context assembly failed:", err);
+    res.status(500).json({ error: "Failed to prepare conversation context" });
+    return;
+  }
+  const assembleDuration = Date.now() - assembleStart;
+
+  // ── 6. SSE headers (Rule 16: flush before LLM — Server-Timing set here) ─────
+  //       assembleContext is complete so we can include its duration.
+
+  res.setHeader("Server-Timing", `assembleContext;dur=${assembleDuration}`);
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
@@ -108,69 +166,6 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
     cleanup();
     if (!res.writableEnded) res.end();
   });
-
-  // ── 3. Authentication (async — after headers are flushed) ───────────────────
-
-  let user: Awaited<ReturnType<typeof sdk.authenticateRequest>>;
-  try {
-    user = await sdk.authenticateRequest(req);
-  } catch {
-    writeEvent({ type: "error", message: "Authentication required" });
-    cleanup();
-    res.end();
-    return;
-  }
-
-  // ── 3b. Rate limit check (Rule 27: 10 req/min/user) ────────────────────────
-
-  const rateCheck = rateLimiter.check(`chat:${user.id}`, 10, 60_000);
-  if (!rateCheck.allowed) {
-    writeEvent({ type: "error", message: "Rate limit exceeded", code: "RATE_LIMITED", resetAt: rateCheck.resetAt });
-    cleanup();
-    res.end();
-    return;
-  }
-
-  // ── 4. Conversation ownership check (Rule 31) ───────────────────────────────
-
-  const conversation = await getConversationById(conversationId);
-  if (!conversation || conversation.userId !== user.id) {
-    writeEvent({ type: "error", message: "Conversation not found" });
-    cleanup();
-    res.end();
-    return;
-  }
-
-  if (conversation.status === "frozen") {
-    writeEvent({ type: "error", message: "Conversation is frozen" });
-    cleanup();
-    res.end();
-    return;
-  }
-
-  // ── 5. Persist the user message ────────────────────────────────────────────
-
-  const userMessageId = nanoid();
-  await createMessage({
-    id: userMessageId,
-    conversationId,
-    role: "user",
-    content: message,
-    moderationStatus: "passed",
-  });
-
-  // ── 6. Assemble context (Rule 15: never expose to client) ──────────────────
-
-  let context: Awaited<ReturnType<typeof assembleContext>>;
-  try {
-    context = await assembleContext(conversationId, user.id);
-  } catch (err) {
-    console.error("[stream] Context assembly failed:", err);
-    writeEvent({ type: "error", message: "Failed to prepare conversation context" });
-    cleanup();
-    res.end();
-    return;
-  }
 
   // Build the LLM messages array: system first, then history, then user turn
   const llmMessages: Message[] = [

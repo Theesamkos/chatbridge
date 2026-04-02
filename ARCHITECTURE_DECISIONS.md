@@ -146,3 +146,39 @@ X-Accel-Buffering: no
 - `client/src/App.tsx` — route registered
 
 **Test:** Open `/stream-test` in the browser, click "Run Stream Test". Five tokens appear one by one followed by a completion message.
+
+---
+
+## Decision 7 — Frontend Framework: React + Vite + Express SPA (vs. Next.js)
+
+**Status:** Locked (Phase 0 retrospective, documented Phase 6D)
+
+**Context:**
+A common alternative to the chosen React+Vite+Express stack would be Next.js, which collocates the React frontend and API in one framework. This decision documents why the SPA+Express approach was retained.
+
+**Options compared:**
+
+| Criterion | React + Vite + Express | Next.js App Router |
+|---|---|---|
+| SSE streaming control | Full control — plain `http.ServerResponse` | Route Handlers support streaming with more abstraction |
+| SSE heartbeat + abort | Direct `setInterval` / `AbortController` | Same mechanics, within RSC constraints |
+| Auth cookie handling | Custom Express middleware, full access to `req` | `cookies()` API + `proxy.ts` |
+| Plugin static file serving | `express.static()`, trivial | `public/` folder, equivalent |
+| tRPC integration | `server/_core/trpc.ts`, no framework wiring | `@trpc/next`, slightly more config |
+| Deployment target | Manus Forge — plain Node.js process | Requires Next.js-compatible runtime |
+| Bundle size (gzip) | ~194 KB | ~200–300 KB baseline |
+
+**Decision: React + Vite + Express**
+
+Two factors drove this choice:
+
+1. **Deployment environment fit.** Manus Forge runs a plain Node.js process. Express maps directly to this model. Next.js requires a runtime that understands its file-based routing conventions.
+
+2. **SSE lifecycle ownership.** The streaming endpoint (Decision 4) needs byte-level control: `Server-Timing` headers set before `res.flushHeaders()`, per-request `AbortController`, 15-second heartbeat via `setInterval`, and tool-call interleaving inside a long-lived connection. A plain Express route owns this with zero abstraction. Next.js Route Handlers introduce a thin layer between the handler and the Node.js response object.
+
+**Consequences:**
+- ✅ Exact fit for the Manus Forge deployment model
+- ✅ Full SSE lifecycle control (Rules 16, 17, 18)
+- ✅ `Server-Timing: assembleContext;dur=N` header works correctly (set before `res.flushHeaders()`)
+- ⚠️ No SSR — initial render is a client SPA (mitigated by Vite lazy loading per route)
+- ⚠️ API and client are separate build artifacts bridged by tRPC

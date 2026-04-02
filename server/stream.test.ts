@@ -172,7 +172,7 @@ describe("POST /api/chat/stream", () => {
     expect(res.flushHeaders).not.toHaveBeenCalled();
   });
 
-  it("sends SSE error event when conversationId does not belong to the user (403-equivalent)", async () => {
+  it("returns plain HTTP 404 when conversationId does not belong to the user (Rule 31)", async () => {
     // Conversation belongs to a different user
     vi.mocked(getConversationById).mockResolvedValue(makeConversation({ userId: 999 }));
 
@@ -181,13 +181,14 @@ describe("POST /api/chat/stream", () => {
 
     await streamHandler(req as never, res as never);
 
-    // SSE was opened (headers flushed after input validation passed)
-    expect(res.flushHeaders).toHaveBeenCalled();
-
-    const errorEvent = res.written.find(w => w.includes('"type":"error"'));
-    expect(errorEvent).toBeDefined();
-    // Generic message — no internal details exposed (constraint)
-    expect(errorEvent).not.toContain("userId");
-    expect(res.end).toHaveBeenCalled();
+    // Plain HTTP 404 — SSE headers must NOT have been flushed (ownership checked pre-flush)
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "Conversation not found" }),
+    );
+    expect(res.flushHeaders).not.toHaveBeenCalled();
+    // No internal user details exposed
+    const jsonCall = vi.mocked(res.json).mock.calls[0]?.[0] as Record<string, string> | undefined;
+    expect(JSON.stringify(jsonCall ?? {})).not.toContain("userId");
   });
 });
