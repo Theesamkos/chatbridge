@@ -80,6 +80,16 @@ const plugins: InsertPluginSchema[] = [
           required: [],
         },
       },
+      {
+        name: "get_help",
+        description:
+          "Get the full structured game state including all legal moves, captured pieces, and move history for position-aware coaching. Call this when the student asks for help, hints, or coaching advice — it gives you everything you need to provide accurate, grounded guidance without hallucinating moves.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
+      },
     ],
     manifest: {
       lifecycleType: "continuous_bidirectional",

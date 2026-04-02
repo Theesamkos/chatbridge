@@ -109,6 +109,16 @@ export async function assembleContext(
       `\n\nThe student is currently using the ${pluginName}. ` +
       `Current state: ${JSON.stringify(pluginState, null, 2)}`;
 
+    // Chess-specific grounding instruction (always active)
+    if (activePluginId === "chess") {
+      systemMessage +=
+        "\n\nIMPORTANT CHESS RULES: " +
+        "(1) NEVER invent or hallucinate chess moves. Always call get_help or get_board_state first if you are unsure of the current position. " +
+        "(2) When calling make_move, use UCI notation ONLY (e.g. 'e2e4', 'g1f3'). " +
+        "(3) If make_move returns moveResult:'illegal', acknowledge the error and ask the student what they intended. " +
+        "(4) The FEN string in the plugin state is the authoritative ground truth for the board position.";
+    }
+
     // Teach Me Mode: inject chess-specific coaching prompt (Rule 12)
     if (
       activePluginId === "chess" &&

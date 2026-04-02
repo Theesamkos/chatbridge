@@ -97,3 +97,16 @@
 - [x] Mock plugin — upgraded to Protocol Tester v2 (STATE_UPDATE, PLUGIN_COMPLETE, PLUGIN_ERROR soft/fatal, PING/PONG, auto-state, counters)
 - [x] PluginBridge.test.ts — 5 new lifecycle tests (PLUGIN_COMPLETE, PLUGIN_ERROR fatal/soft, partial STATE_UPDATE, sendPing)
 - [x] Test suite: 96/96 passing (up from 91)
+
+## Phase 3: Chess App Integration (CURRENT)
+
+- [ ] Inspect current chess app, plugin infrastructure, context assembly, and state pipeline
+- [ ] Rebuild chess app: chess.js 0.10.3, structured ChessState model, FEN validation, premium UI
+- [ ] Implement all 5 chess tools: start_game, make_move, get_board_state, get_legal_moves, get_help
+- [ ] Wire chess STATE_UPDATE into plugin state persistence pipeline
+- [ ] Wire chess state into LLM context assembly (inject FEN + game status into system prompt)
+- [ ] Add chess-specific error handling: illegal move, malformed FEN, timeout, desync
+- [ ] Add chess vitest coverage: state validation, tool handlers, FEN sanitization
+- [ ] Run full test suite (target: 100+ tests)
+- [ ] Save Phase 3 checkpoint
+- [ ] Write and deliver Phase 3 implementation report
