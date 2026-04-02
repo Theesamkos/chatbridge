@@ -143,3 +143,12 @@
 - [x] contextAssembly.ts: completion coaching for excellent (≥80%), partial (60-79%), low (<60%) scores + pending-score state
 - [x] 11 new artifact-studio tests in contextAssembly.test.ts (context assembly + sanitizePluginState injection protection)
 - [x] Full test suite: 122/122 passing (up from 111)
+
+## Phase 6: UI Foundation + Product Polish (COMPLETED)
+
+- [x] Premium design system: OKLCH depth tokens, type scale, spacing rhythm, motion utilities, dot-grid background, glow utilities (index.css)
+- [x] Chat UI: premium message bubbles with role-specific styling, tool indicator with spinner, input composer with focus ring, plugin split divider, empty state with quick starters
+- [x] Landing page: immersive hero with depth layers, stats bar, feature grid with hover cards, refined nav with K-12 badge, polished footer
+- [x] DashboardLayout: brand mark in sidebar header, refined active menu items, better mobile bottom tab bar
+- [x] Teacher Dashboard: elevated stat cards with color/trend indicators, quick-action row, refined activity feed with severity badges
+- [x] All 122 tests passing (UI changes are frontend-only, no backend test impact)

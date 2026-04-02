@@ -171,24 +171,29 @@ function DashboardLayoutContent({
           className="border-r-0"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center">
+          <SidebarHeader className="h-16 justify-center border-b border-sidebar-border">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                className="h-8 w-8 flex items-center justify-center hover:bg-sidebar-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring shrink-0"
                 aria-label="Toggle navigation"
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                <PanelLeft className="h-4 w-4 text-sidebar-foreground/50" />
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span className="font-semibold tracking-tight truncate flex-1">
-                    Navigation
-                  </span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="h-5 w-5 rounded-md bg-primary/20 flex items-center justify-center shrink-0">
+                      <LayoutDashboard className="h-3 w-3 text-primary" />
+                    </div>
+                    <span className="font-semibold tracking-tight truncate text-sm text-sidebar-foreground">
+                      ChatBridge
+                    </span>
+                  </div>
                   {switchable && (
                     <button
                       onClick={toggleTheme}
-                      className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                      className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground"
                       aria-label="Toggle theme"
                     >
                       {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
@@ -200,7 +205,7 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
+            <SidebarMenu className="px-2 py-2">
               {menuItems.map(item => {
                 const isActive = location === item.path;
                 return (
@@ -209,12 +214,12 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
+                      className={`h-10 transition-all duration-150 rounded-lg font-normal text-sidebar-foreground/70 hover:text-sidebar-foreground ${isActive ? "bg-primary/12 text-sidebar-primary font-medium" : "hover:bg-sidebar-accent"}`}
                     >
                       <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                        className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : "text-sidebar-foreground/50"}`}
                       />
-                      <span>{item.label}</span>
+                      <span className="text-sm">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -283,11 +288,11 @@ function DashboardLayoutContent({
             )}
           </div>
         )}
-        <main className="flex-1 p-4 pb-20 md:pb-4">{children}</main>
+        <main className="flex-1 p-5 pb-20 md:pb-6 max-w-[1600px]">{children}</main>
 
         {/* Mobile bottom tab bar */}
         {isMobile && menuItems.length > 0 && (
-          <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur md:hidden">
+          <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur-md md:hidden">
             <div className="flex items-stretch h-16">
               {menuItems.map(item => {
                 const isActive = location === item.path;
@@ -295,14 +300,14 @@ function DashboardLayoutContent({
                   <button
                     key={item.path}
                     onClick={() => setLocation(item.path)}
-                    className={`flex flex-1 flex-col items-center justify-center gap-1 min-h-[44px] transition-colors ${
+                    className={`flex flex-1 flex-col items-center justify-center gap-1.5 min-h-[44px] transition-all duration-150 ${
                       isActive
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     aria-label={item.label}
                   >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon className={`h-5 w-5 ${isActive ? "" : "opacity-60"}`} />
                     <span className="text-[10px] font-medium leading-none">{item.label}</span>
                   </button>
                 );

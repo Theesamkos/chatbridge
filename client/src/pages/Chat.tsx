@@ -87,14 +87,14 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
   if (msg.role === "user") {
     return (
-      <div className="flex justify-end group px-4">
-        <div className="relative max-w-[75%]">
+      <div className="flex justify-end group px-4 sm:px-6 animate-fade-in">
+        <div className="relative max-w-[72%]">
           {msg.createdAt && (
-            <p className="text-[10px] text-muted-foreground text-right mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <p className="text-[10px] text-muted-foreground text-right mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </p>
           )}
-          <div className="rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm leading-relaxed">
+          <div className="msg-user">
             {msg.content}
           </div>
         </div>
@@ -105,24 +105,24 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   if (msg.role === "assistant") {
     return (
       <div
-        className="flex items-start gap-3 group px-4"
+        className="flex items-start gap-3 group px-4 sm:px-6 animate-fade-in"
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
         {/* Avatar */}
-        <div className="shrink-0 mt-0.5 h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+        <div className="shrink-0 mt-1 h-7 w-7 rounded-full bg-primary/12 border border-primary/20 flex items-center justify-center shadow-sm">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
         </div>
 
-        <div className="flex flex-col min-w-0 flex-1 max-w-[80%]">
+        <div className="flex flex-col min-w-0 flex-1 max-w-[82%]">
           {msg.createdAt && (
-            <p className="text-[10px] text-muted-foreground mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <p className="text-[10px] text-muted-foreground mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </p>
           )}
           <div
             className={cn(
-              "rounded-2xl rounded-tl-sm bg-card border px-4 py-2.5 text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none",
+              "msg-assistant prose prose-sm dark:prose-invert max-w-none",
               msg.streaming && "streaming-cursor",
             )}
           >
@@ -134,13 +134,13 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           </div>
           {/* Copy button */}
           {!msg.streaming && (
-            <div className={cn("flex mt-1", hovering ? "opacity-100" : "opacity-0 pointer-events-none", "transition-opacity")}>
+            <div className={cn("flex mt-1.5", hovering ? "opacity-100" : "opacity-0 pointer-events-none", "transition-opacity duration-150")}>
               <button
                 onClick={copyText}
-                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded transition-colors min-h-[28px] min-w-[28px]"
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/60 transition-all duration-150 min-h-[28px]"
                 aria-label="Copy message"
               >
-                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
                 <span>{copied ? "Copied" : "Copy"}</span>
               </button>
             </div>
@@ -157,13 +157,13 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 function ToolIndicator({ pluginName }: { pluginName: string }) {
   return (
-    <div className="flex items-start gap-3 px-4">
-      <div className="shrink-0 mt-0.5 h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+    <div className="flex items-start gap-3 px-4 sm:px-6 animate-fade-in">
+      <div className="shrink-0 mt-1 h-7 w-7 rounded-full bg-primary/12 border border-primary/20 flex items-center justify-center shadow-sm">
         <Sparkles className="h-3.5 w-3.5 text-primary" />
       </div>
-      <div className="flex items-center gap-2 bg-muted/50 border rounded-2xl rounded-tl-sm px-4 py-2.5">
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Using {pluginName}…</span>
+      <div className="tool-indicator animate-slide-up">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary/70" />
+        <span>Using <span className="font-medium text-foreground/80">{pluginName}</span>…</span>
       </div>
     </div>
   );
@@ -201,7 +201,7 @@ function AutoResizeTextarea({
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    const maxH = 6 * 24 + 24; // 6 lines × ~24px + padding
+    const maxH = 6 * 24 + 24;
     el.style.height = Math.min(el.scrollHeight, maxH) + "px";
   }, [value]);
 
@@ -226,13 +226,13 @@ function AutoResizeTextarea({
         placeholder={placeholder}
         rows={1}
         maxLength={4000}
-        className="w-full resize-none rounded-xl border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground disabled:opacity-50 min-h-[44px] leading-relaxed pr-12"
+        className="composer-input placeholder:text-muted-foreground/60 disabled:opacity-40 pr-12"
         aria-label="Message input"
       />
       {showCount && (
         <span
           className={cn(
-            "absolute bottom-2.5 right-12 text-[10px] tabular-nums",
+            "absolute bottom-3 right-12 text-[10px] tabular-nums",
             charCount >= 3800 ? "text-destructive" : "text-muted-foreground",
           )}
         >
@@ -269,12 +269,12 @@ function SidebarContents({
   return (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-sidebar-border shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded bg-primary/20 flex items-center justify-center">
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-sidebar-border shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-lg bg-primary/20 flex items-center justify-center shadow-sm">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
           </div>
-          <span className="font-semibold text-sm">ChatBridge</span>
+          <span className="font-semibold text-sm tracking-tight text-sidebar-foreground">ChatBridge</span>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -296,14 +296,14 @@ function SidebarContents({
       </div>
 
       {/* Search */}
-      <div className="px-3 py-2 shrink-0">
+      <div className="px-3 py-2.5 shrink-0">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-sidebar-foreground/40" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-sidebar-foreground/35" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="pl-8 h-8 text-xs bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus-visible:ring-sidebar-ring"
+            className="pl-8 h-8 text-xs bg-sidebar-accent/40 border-sidebar-border/60 text-sidebar-foreground placeholder:text-sidebar-foreground/35 focus-visible:ring-sidebar-ring focus-visible:ring-1 rounded-lg"
           />
         </div>
       </div>
@@ -325,10 +325,10 @@ function SidebarContents({
                 <button
                   onClick={() => { onSelect(conv.id); onClose?.(); }}
                   className={cn(
-                    "w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors min-h-[44px]",
+                    "w-full rounded-lg px-3 py-2.5 text-left text-sm transition-all duration-150 min-h-[44px] group/item",
                     activeConvId === conv.id
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent",
+                      ? "bg-primary/12 text-sidebar-primary font-medium shadow-sm"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -357,18 +357,18 @@ function SidebarContents({
         {user?.role === "student" && (
           <button
             onClick={() => { onNavigate("/portfolio"); onClose?.(); }}
-            className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-xs text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors min-h-[44px]"
+            className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-xs text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-150 min-h-[44px]"
           >
-            <BookOpen className="h-3.5 w-3.5 shrink-0" />
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/50" />
             My Portfolio
           </button>
         )}
         {(user?.role === "teacher" || user?.role === "admin") && (
           <button
             onClick={() => { onNavigate("/teacher"); onClose?.(); }}
-            className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-xs text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors min-h-[44px]"
+            className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-xs text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-150 min-h-[44px]"
           >
-            <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+            <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/50" />
             Teacher Dashboard
           </button>
         )}
@@ -616,7 +616,7 @@ export default function Chat() {
       </div>
 
       {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
-      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r">
+      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-sidebar-border">
         <SidebarContents {...sidebarProps} />
       </aside>
 
@@ -633,7 +633,7 @@ export default function Chat() {
       {/* ── Main area ────────────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <header className="flex items-center justify-between px-3 py-2 border-b bg-background/95 backdrop-blur shrink-0 h-14">
+        <header className="flex items-center justify-between px-4 py-2 border-b border-border/60 bg-background/95 backdrop-blur-md shrink-0 h-14">
           <div className="flex items-center gap-2">
             {/* Mobile hamburger */}
             <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
@@ -643,7 +643,7 @@ export default function Chat() {
                 </Button>
               </SheetTrigger>
             </Sheet>
-            <span className="text-sm font-medium truncate hidden md:block">
+            <span className="text-sm font-semibold tracking-tight truncate hidden md:block text-foreground/90">
               {activeConv?.title ?? (activeConvId ? "Conversation" : "ChatBridge")}
             </span>
           </div>
@@ -686,7 +686,7 @@ export default function Chat() {
 
         {/* Content area */}
         {!activeConvId ? (
-          <EmptyState onNew={handleNewChat} isCreating={createConv.isPending} />
+          <EmptyState onNew={handleNewChat} isCreating={createConv.isPending} onQuickStart={text => setInputValue(text)} />
         ) : (
           <div className="flex flex-1 overflow-hidden min-h-0">
             {/* ── Chat panel ───────────────────────────────────────────── */}
@@ -695,13 +695,13 @@ export default function Chat() {
                 "flex flex-col overflow-hidden min-w-0",
                 activePluginId
                   ? mobileShowPlugin
-                    ? "hidden md:flex md:w-[45%] md:border-r"
-                    : "flex w-full md:w-[45%] md:border-r"
+                    ? "hidden md:flex md:w-[45%]"
+                    : "flex w-full md:w-[45%]"
                   : "flex flex-1",
               )}
             >
               <ScrollArea className="flex-1">
-                <div className="py-4 space-y-3">
+                <div className="py-6 space-y-4">
                   {displayMessages
                     .filter(m => m.role !== "system")
                     .map(msg => (
@@ -718,8 +718,8 @@ export default function Chat() {
               </ScrollArea>
 
               {/* Input */}
-              <div className="shrink-0 border-t px-3 py-3">
-                <div className="flex items-end gap-2">
+              <div className="shrink-0 border-t border-border/50 px-4 py-3.5">
+                <div className="flex items-end gap-2.5">
                   <div className="flex-1 min-w-0">
                     <AutoResizeTextarea
                       value={inputValue}
@@ -731,7 +731,10 @@ export default function Chat() {
                   </div>
                   <Button
                     size="icon"
-                    className="h-[44px] w-[44px] shrink-0 rounded-xl"
+                    className={cn(
+                      "h-[44px] w-[44px] shrink-0 rounded-xl transition-all duration-150",
+                      inputValue.trim() && !isStreaming && "glow-primary"
+                    )}
                     disabled={!inputValue.trim() || isStreaming}
                     onClick={handleSendMessage}
                     aria-label="Send message"
@@ -757,6 +760,11 @@ export default function Chat() {
               )}
             </div>
 
+            {/* ── Chat/Plugin divider ────────────────────────────────── */}
+            {activePluginId && (
+              <div className="chat-divider hidden md:block" />
+            )}
+
             {/* ── Plugin panel ──────────────────────────────────────────── */}
             {activePluginId && (
               <div
@@ -768,10 +776,12 @@ export default function Chat() {
                 )}
               >
                 {/* Plugin header bar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30 shrink-0 h-12">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Zap className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-sm font-medium truncate">
+                <div className="plugin-header shrink-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="h-5 w-5 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+                      <Zap className="h-3 w-3 text-primary" />
+                    </div>
+                    <span className="text-sm font-semibold tracking-tight truncate text-foreground/90">
                       {pluginSchema?.name ?? activePluginId}
                     </span>
                     {/* Teach Me Mode badge — populated by chess state */}
@@ -795,7 +805,7 @@ export default function Chat() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 text-xs gap-1 text-muted-foreground hover:text-destructive"
+                      className="h-8 text-xs gap-1 text-muted-foreground hover:text-destructive transition-colors duration-150"
                       onClick={() => {
                         if (activeConvId && activePluginId) {
                           deactivatePlugin.mutate({ conversationId: activeConvId });
@@ -857,30 +867,62 @@ export default function Chat() {
   );
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+//// ─── Empty state ────────────────────────────────────────────────────────────
+
+const QUICK_STARTERS = [
+  { label: "Play chess with me", icon: "♞" },
+  { label: "Explore a historical artifact", icon: "🏛️" },
+  { label: "Build a timeline of WWII", icon: "📍" },
+  { label: "Explain the water cycle", icon: "💧" },
+];
 
 function EmptyState({
   onNew,
   isCreating,
+  onQuickStart,
 }: {
   onNew: () => void;
   isCreating: boolean;
+  onQuickStart?: (text: string) => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8">
-      <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-        <Sparkles className="h-8 w-8 text-primary" />
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 p-8 animate-fade-in">
+      {/* Icon */}
+      <div className="relative">
+        <div className="h-16 w-16 rounded-2xl bg-primary/10 border border-primary/15 flex items-center justify-center shadow-lg">
+          <Sparkles className="h-8 w-8 text-primary" />
+        </div>
+        <div className="absolute -inset-3 rounded-3xl bg-primary/5 blur-xl -z-10" />
       </div>
-      <div className="text-center">
-        <p className="font-semibold tracking-tight">Start a conversation</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Select an existing conversation or create a new one.
+
+      {/* Copy */}
+      <div className="text-center max-w-sm">
+        <h3 className="font-semibold tracking-tight text-foreground">Start a conversation</h3>
+        <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+          Select an existing conversation from the sidebar, or create a new one to begin learning.
         </p>
       </div>
+
+      {/* Quick starters */}
+      <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
+        {QUICK_STARTERS.map(qs => (
+          <button
+            key={qs.label}
+            onClick={() => { onNew(); onQuickStart?.(qs.label); }}
+            disabled={isCreating}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-card/60 hover:bg-card hover:border-primary/30 text-left text-xs text-muted-foreground hover:text-foreground transition-all duration-150 disabled:opacity-50"
+          >
+            <span className="text-base leading-none">{qs.icon}</span>
+            <span className="leading-snug">{qs.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* CTA */}
       <Button
         onClick={onNew}
         disabled={isCreating}
-        className="min-h-[44px] gap-2"
+        className="min-h-[44px] gap-2 px-6"
       >
         {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquarePlus className="h-4 w-4" />}
         New Conversation

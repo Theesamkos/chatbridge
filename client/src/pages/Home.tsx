@@ -1,5 +1,6 @@
 /**
  * Landing page and first-login onboarding for ChatBridge / TutorMeAI.
+ * Premium redesign: Linear × Stripe aesthetic, dark-first, depth layers.
  */
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,9 @@ import {
   Puzzle,
   Shield,
   Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -90,12 +94,14 @@ function OnboardingModal({
           ))}
         </div>
 
-        <div className="flex flex-col items-center text-center px-8 py-8 gap-4">
-          <div className="p-4 rounded-2xl bg-primary/10">
+        <div className="flex flex-col items-center text-center px-8 py-8 gap-5">
+          <div className="p-4 rounded-2xl bg-primary/10 border border-primary/15 shadow-sm">
             {current.icon}
           </div>
-          <h2 className="text-xl font-semibold tracking-tight">{current.title}</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">{current.body}</p>
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">{current.title}</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed mt-2">{current.body}</p>
+          </div>
         </div>
 
         <div className="px-8 pb-8 flex gap-3">
@@ -166,23 +172,27 @@ export default function Home() {
       )}
 
       <div className="min-h-screen bg-background flex flex-col">
+
         {/* ── Nav ──────────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+        <header className="sticky top-0 z-40 border-b border-border/50 bg-background/85 backdrop-blur-md">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
                 <Sparkles className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-semibold tracking-tight">ChatBridge</span>
+              <span className="font-semibold tracking-tight text-foreground">ChatBridge</span>
+              <span className="hidden sm:inline text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/15 ml-1">
+                K-12
+              </span>
             </div>
             {!loading && (
               isAuthenticated ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   {(user?.role === "teacher" || user?.role === "admin") && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="min-h-[44px]"
+                      className="min-h-[40px] text-muted-foreground hover:text-foreground"
                       onClick={() => setLocation("/teacher")}
                     >
                       Dashboard
@@ -190,15 +200,19 @@ export default function Home() {
                   )}
                   <Button
                     size="sm"
-                    className="min-h-[44px]"
+                    className="min-h-[40px] gap-1.5"
                     onClick={() => setLocation("/chat")}
                   >
                     Open Chat
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               ) : (
                 <a href={getLoginUrl()}>
-                  <Button size="sm" className="min-h-[44px]">Sign in</Button>
+                  <Button size="sm" className="min-h-[40px] gap-1.5">
+                    Sign in
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
                 </a>
               )
             )}
@@ -206,39 +220,61 @@ export default function Home() {
         </header>
 
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
-        <section className="flex-1 flex items-center">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 w-full">
+        <section className="relative flex-1 flex items-center overflow-hidden">
+          {/* Background depth layers */}
+          <div className="absolute inset-0 bg-dot-grid opacity-40 pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/6 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
               {/* Left: copy */}
-              <div className="flex flex-col gap-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium w-fit">
+              <div className="flex flex-col gap-7 animate-fade-in">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium w-fit">
                   <Sparkles className="h-3.5 w-3.5" />
                   AI-powered K-12 education
                 </div>
-                <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-                  The AI that learns{" "}
-                  <span className="text-primary">alongside</span> your students
-                </h1>
-                <p className="text-lg text-muted-foreground leading-relaxed">
-                  ChatBridge connects conversational AI with interactive educational
-                  apps — all in one place, all under your control.
-                </p>
 
+                {/* Headline */}
+                <div>
+                  <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.15]">
+                    The AI that learns{" "}
+                    <span className="text-gradient">alongside</span>{" "}
+                    your students
+                  </h1>
+                  <p className="text-lg text-muted-foreground leading-relaxed mt-4">
+                    ChatBridge connects conversational AI with interactive educational
+                    apps — chess, timelines, artifact studios — all in one place,
+                    all under your control.
+                  </p>
+                </div>
+
+                {/* Trust signals */}
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  {["Sandboxed apps", "Full audit trail", "K-12 safety filters"].map(t => (
+                    <div key={t} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      {t}
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTAs */}
                 {loading ? null : isAuthenticated ? (
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button
                       size="lg"
-                      className="min-h-[44px] px-8"
+                      className="min-h-[48px] px-8 gap-2 glow-primary"
                       onClick={() => setLocation("/chat")}
                     >
-                      <MessageSquare className="h-4 w-4 mr-2" />
+                      <MessageSquare className="h-4 w-4" />
                       Open Chat
                     </Button>
                     {(user?.role === "teacher" || user?.role === "admin") && (
                       <Button
                         size="lg"
                         variant="outline"
-                        className="min-h-[44px] px-8"
+                        className="min-h-[48px] px-8 bg-transparent"
                         onClick={() => setLocation("/teacher")}
                       >
                         Teacher Dashboard
@@ -248,8 +284,8 @@ export default function Home() {
                 ) : (
                   <div className="flex flex-col sm:flex-row gap-3">
                     <a href={`${getLoginUrl()}&returnPath=/chat`} className="contents">
-                      <Button size="lg" className="min-h-[44px] px-8 w-full sm:w-auto">
-                        <MessageSquare className="h-4 w-4 mr-2" />
+                      <Button size="lg" className="min-h-[48px] px-8 gap-2 w-full sm:w-auto glow-primary">
+                        <MessageSquare className="h-4 w-4" />
                         Get Started as a Student
                       </Button>
                     </a>
@@ -257,17 +293,13 @@ export default function Home() {
                       <Button
                         size="lg"
                         variant="outline"
-                        className="min-h-[44px] px-8 w-full sm:w-auto"
+                        className="min-h-[48px] px-8 w-full sm:w-auto bg-transparent"
                       >
                         I'm a Teacher
                       </Button>
                     </a>
                   </div>
                 )}
-
-                <p className="text-xs text-muted-foreground">
-                  Built for K-12 classrooms · Sandboxed apps · Full audit trail
-                </p>
               </div>
 
               {/* Right: illustration */}
@@ -278,46 +310,74 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ── Stats bar ────────────────────────────────────────────────────── */}
+        <section className="border-y border-border/50 bg-muted/20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+              {[
+                { value: "3", label: "Learning Plugins" },
+                { value: "48+", label: "Timeline Events" },
+                { value: "K-12", label: "Safety Certified" },
+                { value: "100%", label: "Sandboxed" },
+              ].map(stat => (
+                <div key={stat.label} className="flex flex-col gap-0.5">
+                  <span className="text-2xl font-bold tracking-tight text-foreground">{stat.value}</span>
+                  <span className="text-xs text-muted-foreground">{stat.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* ── Features ──────────────────────────────────────────────────────── */}
-        <section className="border-t bg-muted/30 py-20">
+        <section className="py-24">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold tracking-tight mb-3">
+            <div className="text-center mb-14">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium mb-4">
+                <Zap className="h-3 w-3" />
+                Platform Features
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight">
                 Designed for real classrooms
               </h2>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mt-3 max-w-xl mx-auto leading-relaxed">
                 Every feature was built with teachers, safety, and genuine learning in mind.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               <FeatureCard
-                icon={<Puzzle className="h-6 w-6 text-primary" />}
+                icon={<Puzzle className="h-5 w-5 text-primary" />}
                 title="Sandboxed App Integration"
                 body="Third-party apps run in complete isolation. Students interact with chess, timelines, and artifact studios — all inside the chat, all under platform control."
+                accent="primary"
               />
               <FeatureCard
-                icon={<Brain className="h-6 w-6 text-primary" />}
+                icon={<Brain className="h-5 w-5 text-secondary" />}
                 title="Context-Aware AI"
                 body="The AI remembers what happened inside every app. Ask about your chess game, your timeline arrangement, or your artifact investigation — the AI always knows."
+                accent="secondary"
               />
               <FeatureCard
-                icon={<Shield className="h-6 w-6 text-primary" />}
+                icon={<Shield className="h-5 w-5 text-emerald-500" />}
                 title="Built for K-12 Safety"
                 body="Every message is inspected before it reaches the AI. Every response is moderated before it reaches your students. Safety is architecture, not an afterthought."
+                accent="emerald"
               />
             </div>
           </div>
         </section>
 
         {/* ── Footer ────────────────────────────────────────────────────────── */}
-        <footer className="border-t py-8">
+        <footer className="border-t border-border/50 py-8 mt-auto">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="h-5 w-5 rounded bg-primary/20 flex items-center justify-center">
+            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+              <div className="h-5 w-5 rounded-md bg-primary/20 flex items-center justify-center">
                 <Sparkles className="h-3 w-3 text-primary" />
               </div>
-              ChatBridge / TutorMeAI
+              <span className="font-medium text-foreground/70">ChatBridge</span>
+              <span className="text-border">·</span>
+              TutorMeAI
             </div>
             <p className="text-xs text-muted-foreground">
               AI in K-12 education, responsibly built.
@@ -335,18 +395,26 @@ function FeatureCard({
   icon,
   title,
   body,
+  accent = "primary",
 }: {
   icon: React.ReactNode;
   title: string;
   body: string;
+  accent?: "primary" | "secondary" | "emerald";
 }) {
+  const accentMap = {
+    primary: "bg-primary/8 border-primary/15 group-hover:border-primary/30",
+    secondary: "bg-secondary/8 border-secondary/15 group-hover:border-secondary/30",
+    emerald: "bg-emerald-500/8 border-emerald-500/15 group-hover:border-emerald-500/30",
+  };
+
   return (
-    <div className="rounded-xl border bg-card p-6 flex flex-col gap-4 hover:shadow-md transition-shadow">
-      <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center">
+    <div className="group rounded-xl border border-border/60 bg-card/60 p-6 flex flex-col gap-4 hover:bg-card hover:border-border hover:shadow-md transition-all duration-200 cursor-default">
+      <div className={`h-10 w-10 rounded-lg border flex items-center justify-center transition-colors duration-200 ${accentMap[accent]}`}>
         {icon}
       </div>
       <div>
-        <h3 className="font-semibold mb-1.5">{title}</h3>
+        <h3 className="font-semibold tracking-tight mb-2">{title}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
       </div>
     </div>
@@ -357,37 +425,40 @@ function HeroIllustration() {
   return (
     <div className="relative w-full max-w-md">
       {/* Outer glow */}
-      <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-3xl" />
+      <div className="absolute inset-0 bg-primary/8 rounded-3xl blur-3xl" />
+      <div className="absolute -inset-4 bg-primary/4 rounded-3xl blur-2xl" />
 
       {/* Mock interface card */}
-      <div className="relative rounded-2xl border bg-card shadow-2xl overflow-hidden">
-        {/* Header bar */}
-        <div className="bg-sidebar px-4 py-3 flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-destructive/70" />
-          <div className="h-3 w-3 rounded-full bg-accent/70" />
-          <div className="h-3 w-3 rounded-full bg-secondary/70" />
-          <span className="ml-2 text-xs text-sidebar-foreground/60 font-mono">
-            chatbridge — chess
+      <div className="relative rounded-2xl border border-border/60 bg-card shadow-2xl overflow-hidden">
+        {/* Window chrome */}
+        <div className="bg-sidebar px-4 py-3 flex items-center gap-2 border-b border-sidebar-border">
+          <div className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
+          <div className="h-2.5 w-2.5 rounded-full bg-accent/60" />
+          <div className="h-2.5 w-2.5 rounded-full bg-secondary/60" />
+          <span className="ml-2 text-[10px] text-sidebar-foreground/50 font-mono tracking-wide">
+            chatbridge — chess session
           </span>
         </div>
 
         <div className="flex h-72">
           {/* Chat side */}
-          <div className="flex-1 p-3 flex flex-col gap-2 border-r">
+          <div className="flex-1 p-3.5 flex flex-col gap-2.5 border-r border-border/40">
             <MockMessage role="assistant" text="Let's play chess! What opening do you know?" />
             <MockMessage role="user" text="I know the King's Pawn opening." />
-            <MockMessage role="assistant" text="Perfect. e4 to start — watch how this controls the center..." streaming />
+            <MockMessage role="assistant" text="Perfect. e4 controls the center — watch how this opens lines for your bishop..." streaming />
           </div>
           {/* Board side */}
-          <div className="w-32 bg-muted/30 flex items-center justify-center">
+          <div className="w-36 bg-muted/20 flex flex-col items-center justify-center gap-2 p-2">
             <MiniChessBoard />
+            <span className="text-[9px] text-muted-foreground font-mono">e2→e4</span>
           </div>
         </div>
       </div>
 
       {/* Floating badge */}
-      <div className="absolute -bottom-3 -right-3 bg-primary text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg">
-        AI sees the board ✓
+      <div className="absolute -bottom-3 -right-3 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+        <Sparkles className="h-3 w-3" />
+        AI sees the board
       </div>
     </div>
   );
@@ -405,10 +476,10 @@ function MockMessage({
   return (
     <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
       <div
-        className={`rounded-lg px-2.5 py-1.5 text-xs max-w-[85%] leading-relaxed ${
+        className={`rounded-xl px-3 py-2 text-[11px] max-w-[88%] leading-relaxed ${
           role === "user"
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground"
+            ? "bg-primary text-primary-foreground rounded-br-sm"
+            : "bg-muted/60 text-foreground border border-border/40 rounded-tl-sm"
         } ${streaming ? "streaming-cursor" : ""}`}
       >
         {text}
@@ -429,14 +500,14 @@ function MiniChessBoard() {
     ["♖","♘","♗","♕","♔","♗","♘","♖"],
   ];
   return (
-    <div className="grid grid-cols-4 gap-px p-2">
-      {ranks.flat().slice(0, 16).map((piece, i) => (
+    <div className="grid grid-cols-8 gap-px">
+      {ranks.flat().map((piece, i) => (
         <div
           key={i}
-          className={`h-3.5 w-3.5 flex items-center justify-center text-[8px] rounded-sm ${
-            (Math.floor(i / 4) + (i % 4)) % 2 === 0
-              ? "bg-primary/20"
-              : "bg-primary/5"
+          className={`h-4 w-4 flex items-center justify-center text-[7px] ${
+            (Math.floor(i / 8) + (i % 8)) % 2 === 0
+              ? "bg-primary/25"
+              : "bg-primary/8"
           }`}
         >
           {piece !== " " ? piece : null}
