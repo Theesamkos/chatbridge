@@ -8,290 +8,417 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --navy: #1a2744;
-      --navy-light: #253555;
-      --navy-lighter: #2e3f65;
-      --gold: #c9a84c;
-      --gold-dark: #a88932;
-      --white: #ffffff;
-      --gray-light: #e8ecf4;
-      --gray-mid: #9ba8c0;
-      --red: #e05252;
-      --green: #4caf7a;
-      --text-main: #ffffff;
-      --text-muted: #9ba8c0;
-      --radius: 8px;
-      --transition: 0.3s ease;
+      --bg:          #0d0f14;
+      --surface:     #13161e;
+      --surface-2:   #1a1e2a;
+      --surface-3:   #222736;
+      --border:      rgba(255,255,255,0.07);
+      --border-hi:   rgba(255,255,255,0.14);
+      --gold:        #e8b84b;
+      --gold-dim:    rgba(232,184,75,0.15);
+      --gold-glow:   rgba(232,184,75,0.35);
+      --teal:        #3ecfcf;
+      --teal-dim:    rgba(62,207,207,0.12);
+      --red:         #f05252;
+      --green:       #34d399;
+      --white:       #f0f2f7;
+      --muted:       #6b7280;
+      --muted-hi:    #9ca3af;
+      --radius-sm:   6px;
+      --radius:      10px;
+      --radius-lg:   16px;
+      --radius-xl:   22px;
+      --shadow:      0 4px 24px rgba(0,0,0,0.5);
+      --shadow-lg:   0 8px 48px rgba(0,0,0,0.7);
+      --ease:        cubic-bezier(0.4,0,0.2,1);
+      --dur:         0.25s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
     }
 
     html, body {
       height: 100%;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--navy);
-      color: var(--text-main);
-      overflow-x: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--white);
+      overflow: hidden;
     }
 
-    /* Reduced motion */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        transition-duration: 0ms !important;
-        animation-duration: 0ms !important;
-      }
-    }
-
-    /* ── Layout ── */
+    /* ── App Shell ── */
     #app {
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
     }
 
-    /* ── Progress Bar ── */
-    #progress-bar {
-      background: var(--navy-light);
-      border-bottom: 1px solid var(--navy-lighter);
-      padding: 12px 24px;
+    /* ── Progress Rail ── */
+    #progress-rail {
+      flex-shrink: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
       display: flex;
       align-items: center;
       gap: 0;
-      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
     }
 
-    .phase-step {
+    .rail-step {
       display: flex;
       align-items: center;
+      gap: 8px;
       flex: 1;
+      min-width: 0;
     }
 
-    .phase-label {
-      font-size: 12px;
+    .rail-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-hi);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      flex-shrink: 0;
+      transition: all var(--dur) var(--ease);
+    }
+
+    .rail-label {
+      font-size: 11px;
       font-weight: 600;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--gray-mid);
-      padding: 6px 12px;
-      border-radius: var(--radius);
-      transition: color var(--transition), background var(--transition);
+      color: var(--muted);
       white-space: nowrap;
+      transition: color var(--dur) var(--ease);
     }
 
-    .phase-label.active {
-      color: var(--gold);
-      background: rgba(201, 168, 76, 0.12);
-    }
-
-    .phase-label.completed {
-      color: var(--green);
-    }
-
-    .phase-connector {
+    .rail-connector {
       flex: 1;
-      height: 2px;
-      background: var(--navy-lighter);
-      margin: 0 4px;
+      height: 1px;
+      background: var(--border);
+      margin: 0 8px;
       position: relative;
       overflow: hidden;
     }
 
-    .phase-connector::after {
+    .rail-connector::after {
       content: '';
       position: absolute;
       inset: 0;
       background: var(--gold);
       transform: scaleX(0);
       transform-origin: left;
-      transition: transform var(--transition);
+      transition: transform 0.5s var(--ease);
     }
 
-    .phase-connector.completed::after {
-      transform: scaleX(1);
+    .rail-step.active .rail-num {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #0d0f14;
     }
 
-    /* ── Main Content ── */
-    #content {
+    .rail-step.active .rail-label { color: var(--gold); }
+
+    .rail-step.done .rail-num {
+      background: var(--green);
+      border-color: var(--green);
+      color: #0d0f14;
+    }
+
+    .rail-step.done .rail-label { color: var(--green); }
+
+    .rail-connector.done::after { transform: scaleX(1); }
+
+    /* ── Panel System ── */
+    #panel-host {
       flex: 1;
-      padding: 24px;
-      max-width: 1100px;
-      width: 100%;
-      margin: 0 auto;
+      overflow: hidden;
+      position: relative;
     }
 
-    /* ── Phase Panels ── */
-    .phase-panel {
+    .panel {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
       opacity: 0;
       pointer-events: none;
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      transition: opacity var(--transition);
+      transform: translateX(24px);
+      transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
     }
 
-    .phase-panel.visible {
+    .panel.active {
       opacity: 1;
       pointer-events: auto;
-      position: static;
-      width: auto;
-      height: auto;
-      overflow: visible;
+      transform: translateX(0);
     }
 
-    /* ── Headings ── */
-    h1 { font-size: 28px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
-    h2 { font-size: 20px; font-weight: 600; color: var(--white); margin-bottom: 16px; }
-    h3 { font-size: 16px; font-weight: 600; color: var(--white); }
-
-    .phase-title {
-      margin-bottom: 24px;
+    .panel.exit-left {
+      opacity: 0;
+      transform: translateX(-24px);
     }
 
-    .phase-title h2 {
-      margin-bottom: 4px;
+    /* ── Scrollbar ── */
+    .panel::-webkit-scrollbar { width: 5px; }
+    .panel::-webkit-scrollbar-track { background: transparent; }
+    .panel::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 99px; }
+
+    /* ── DISCOVER PANEL ── */
+    #panel-discover { padding: 28px 24px; }
+
+    .discover-hero {
+      text-align: center;
+      padding: 32px 0 28px;
     }
 
-    .phase-subtitle {
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-
-    /* ── Buttons ── */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 12px 24px;
-      min-height: 44px;
-      min-width: 44px;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background var(--transition), opacity var(--transition), transform var(--transition);
-      text-decoration: none;
-    }
-
-    .btn:active { transform: scale(0.97); }
-
-    .btn-primary {
-      background: var(--gold);
-      color: var(--navy);
-    }
-
-    .btn-primary:hover { background: var(--gold-dark); }
-
-    .btn-primary:disabled {
-      background: var(--navy-lighter);
-      color: var(--gray-mid);
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .btn-secondary {
-      background: var(--navy-lighter);
-      color: var(--white);
-    }
-
-    .btn-secondary:hover { background: #374b78; }
-
-    .btn-danger {
-      background: var(--red);
-      color: var(--white);
-    }
-
-    .btn-danger:hover { background: #c04040; }
-
-    .btn-link {
-      background: transparent;
-      color: var(--gold);
-      padding: 8px 4px;
-      font-size: 14px;
-      font-weight: 500;
-      min-height: 44px;
+    .discover-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(232,184,75,0.3);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
     }
 
-    .btn-link:hover { color: var(--gold-dark); }
-
-    /* ── Search ── */
-    #discover-search {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-
-    #search-input {
-      flex: 1;
-      height: 48px;
-      background: var(--navy-light);
-      border: 1px solid var(--navy-lighter);
-      border-radius: var(--radius);
+    .discover-title {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
       color: var(--white);
-      font-size: 15px;
-      padding: 0 16px;
+      margin-bottom: 8px;
+    }
+
+    .discover-subtitle {
+      font-size: 14px;
+      color: var(--muted-hi);
+      max-width: 480px;
+      margin: 0 auto 28px;
+      line-height: 1.6;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      max-width: 560px;
+      margin: 0 auto 12px;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--surface-2);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius);
+      padding: 11px 16px;
+      font-size: 14px;
+      color: var(--white);
       outline: none;
-      transition: border-color var(--transition);
+      transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
     }
 
-    #search-input:focus {
+    .search-input::placeholder { color: var(--muted); }
+
+    .search-input:focus {
       border-color: var(--gold);
+      box-shadow: 0 0 0 3px var(--gold-dim);
     }
 
-    #search-input::placeholder { color: var(--gray-mid); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all var(--dur) var(--ease);
+      white-space: nowrap;
+    }
 
-    /* ── Results grid ── */
-    #results-grid {
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: #0d0f14;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #f0c55a;
+      box-shadow: 0 0 20px var(--gold-glow);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted-hi);
+      border: 1px solid var(--border-hi);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--surface-2);
+      color: var(--white);
+      border-color: var(--border-hi);
+    }
+
+    .btn-teal {
+      background: var(--teal);
+      color: #0d0f14;
+    }
+
+    .btn-teal:hover:not(:disabled) {
+      background: #5adada;
+      box-shadow: 0 0 20px rgba(62,207,207,0.4);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--red);
+      border: 1px solid rgba(240,82,82,0.3);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(240,82,82,0.1);
+    }
+
+    /* Quick search chips */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .chip {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--muted-hi);
+      cursor: pointer;
+      transition: all var(--dur) var(--ease);
+    }
+
+    .chip:hover {
+      background: var(--surface-3);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* Results grid */
+    #results-area { margin-top: 28px; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .results-count {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .results-source {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--teal);
+      background: var(--teal-dim);
+      border: 1px solid rgba(62,207,207,0.2);
+      border-radius: 99px;
+      padding: 3px 10px;
+    }
+
+    .artifact-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-
-    @media (max-width: 700px) {
-      #results-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (max-width: 480px) {
-      #results-grid { grid-template-columns: 1fr; }
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
     }
 
     .artifact-card {
-      background: var(--navy-light);
-      border: 1px solid var(--navy-lighter);
-      border-radius: var(--radius);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       overflow: hidden;
-      transition: border-color var(--transition), transform var(--transition);
+      cursor: pointer;
+      transition: all var(--dur) var(--ease);
       display: flex;
       flex-direction: column;
     }
 
     .artifact-card:hover {
       border-color: var(--gold);
+      box-shadow: 0 0 0 1px var(--gold), var(--shadow);
       transform: translateY(-2px);
     }
 
-    .card-image {
-      width: 100%;
+    .card-img-wrap {
       aspect-ratio: 4/3;
-      object-fit: cover;
-      display: block;
-      background: var(--navy-lighter);
+      overflow: hidden;
+      background: var(--surface-2);
+      position: relative;
     }
 
-    .card-image-placeholder {
+    .card-img {
       width: 100%;
-      aspect-ratio: 4/3;
-      background: var(--navy-lighter);
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s var(--ease);
+    }
+
+    .artifact-card:hover .card-img { transform: scale(1.05); }
+
+    .card-img-placeholder {
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      padding: 12px;
-      color: var(--gray-mid);
-      font-size: 13px;
+      font-size: 28px;
+      color: var(--muted);
+      background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+    }
+
+    .card-source-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(13,15,20,0.85);
+      border: 1px solid var(--border-hi);
+      border-radius: 99px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted-hi);
+      backdrop-filter: blur(8px);
     }
 
     .card-body {
@@ -299,39 +426,63 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
 
     .card-title {
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 600;
       color: var(--white);
-      line-height: 1.3;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .card-date {
-      font-size: 12px;
-      color: var(--gold);
+      font-size: 11px;
+      color: var(--muted);
     }
 
     .card-context {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
+      font-size: 11px;
+      color: var(--teal);
+      font-style: italic;
     }
 
-    .card-select-btn {
+    .card-cta {
       margin-top: auto;
-      width: 100%;
-      min-height: 44px;
+      padding-top: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    /* ── Skeleton ── */
+    /* Skeleton */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+
+    .skeleton-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .skeleton-img-wrap { aspect-ratio: 4/3; }
+
     .skeleton {
-      background: linear-gradient(90deg, var(--navy-lighter) 25%, #374b78 50%, var(--navy-lighter) 75%);
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
-      border-radius: 4px;
+      border-radius: var(--radius-sm);
     }
 
     @keyframes shimmer {
@@ -339,565 +490,911 @@
       100% { background-position: -200% 0; }
     }
 
-    .skeleton-card {
-      background: var(--navy-light);
-      border: 1px solid var(--navy-lighter);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-
-    .skeleton-img {
-      aspect-ratio: 4/3;
-    }
-
     .skeleton-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
-    .skeleton-title { height: 16px; width: 80%; }
-    .skeleton-date { height: 12px; width: 40%; }
-    .skeleton-btn { height: 40px; width: 100%; margin-top: 8px; }
+    .skeleton-title { height: 14px; width: 80%; }
+    .skeleton-date { height: 11px; width: 40%; }
 
-    /* ── State messages ── */
-    .state-message {
+    /* Empty / error states */
+    .state-msg {
       text-align: center;
       padding: 48px 24px;
-      color: var(--text-muted);
-      font-size: 15px;
+      color: var(--muted-hi);
     }
 
-    .state-message.error { color: var(--red); }
+    .state-msg .state-icon { font-size: 36px; margin-bottom: 12px; }
+    .state-msg h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--white); }
+    .state-msg p { font-size: 13px; color: var(--muted); }
 
-    /* ── Inspect Layout ── */
-    #inspect-layout {
-      display: flex;
-      gap: 24px;
-      align-items: flex-start;
+    /* ── INSPECT PANEL ── */
+    #panel-inspect { padding: 0; }
+
+    .inspect-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: calc(100vh - 52px);
     }
 
-    @media (max-width: 680px) {
-      #inspect-layout { flex-direction: column; }
-      #inspect-image-col { width: 100% !important; }
-      #inspect-meta-col { width: 100% !important; }
+    @media (max-width: 700px) {
+      .inspect-layout { grid-template-columns: 1fr; }
     }
 
-    #inspect-image-col {
-      width: 40%;
-      flex-shrink: 0;
+    .inspect-image-col {
+      position: sticky;
+      top: 0;
+      height: calc(100vh - 52px);
+      overflow: hidden;
+      background: var(--surface);
     }
 
-    #inspect-meta-col {
-      flex: 1;
+    @media (max-width: 700px) {
+      .inspect-image-col { position: relative; height: 260px; }
     }
 
-    #inspect-artifact-image {
+    #inspect-img {
       width: 100%;
-      border-radius: var(--radius);
-      display: block;
+      height: 100%;
       object-fit: cover;
     }
 
-    .inspect-image-placeholder {
+    .inspect-img-placeholder {
       width: 100%;
-      aspect-ratio: 3/4;
-      background: var(--navy-lighter);
-      border-radius: var(--radius);
+      height: 100%;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      padding: 24px;
-      color: var(--gray-mid);
-      font-size: 14px;
-      font-style: italic;
+      gap: 12px;
+      background: linear-gradient(135deg, var(--surface), var(--surface-3));
+      color: var(--muted);
     }
 
-    .meta-row {
+    .inspect-img-placeholder .placeholder-icon { font-size: 48px; }
+    .inspect-img-placeholder .placeholder-text { font-size: 13px; }
+
+    .inspect-img-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(13,15,20,0.9) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .inspect-img-caption {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+    }
+
+    .inspect-img-caption .source-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(13,15,20,0.8);
+      border: 1px solid var(--border-hi);
+      border-radius: 99px;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--teal);
+      backdrop-filter: blur(8px);
+      margin-bottom: 8px;
+    }
+
+    .inspect-detail-col {
+      padding: 32px 28px;
+      overflow-y: auto;
+    }
+
+    .inspect-detail-col::-webkit-scrollbar { width: 4px; }
+    .inspect-detail-col::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 99px; }
+
+    .inspect-back-row {
       display: flex;
+      align-items: center;
       gap: 8px;
-      margin-bottom: 10px;
-      font-size: 14px;
-      align-items: baseline;
+      margin-bottom: 24px;
+    }
+
+    .inspect-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--white);
+      line-height: 1.3;
+      margin-bottom: 16px;
+    }
+
+    .meta-table {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px 16px;
+      margin-bottom: 20px;
     }
 
     .meta-label {
-      color: var(--gold);
-      font-weight: 600;
-      min-width: 110px;
-      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding-top: 1px;
     }
 
     .meta-value {
-      color: var(--text-main);
+      font-size: 13px;
+      color: var(--muted-hi);
+      line-height: 1.5;
     }
 
-    .meta-description {
-      margin-top: 16px;
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    .inspect-desc-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .inspect-desc {
       font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.6;
+      color: var(--muted-hi);
+      line-height: 1.7;
+      margin-bottom: 24px;
     }
 
-    /* ── Investigate ── */
-    .field-group {
+    .inspect-cta-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ── INVESTIGATE PANEL ── */
+    #panel-investigate { padding: 28px 24px; }
+
+    .investigate-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
       margin-bottom: 28px;
     }
 
-    .field-label {
-      display: block;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--gold);
-      margin-bottom: 8px;
-    }
-
-    .field-textarea {
-      width: 100%;
-      min-height: 120px;
-      background: var(--navy-light);
-      border: 1px solid var(--navy-lighter);
-      border-radius: var(--radius);
-      color: var(--white);
-      font-size: 14px;
-      padding: 12px 14px;
-      resize: vertical;
-      outline: none;
-      line-height: 1.5;
-      font-family: inherit;
-      transition: border-color var(--transition);
-    }
-
-    .field-textarea:focus { border-color: var(--gold); }
-    .field-textarea::placeholder { color: var(--gray-mid); }
-
-    .char-count {
-      margin-top: 6px;
-      font-size: 12px;
-      text-align: right;
-      transition: color var(--transition);
-    }
-
-    .char-count.invalid { color: var(--red); }
-    .char-count.valid { color: var(--green); }
-
-    /* ── Conclude ── */
-    #conclude-layout {
+    .investigate-artifact-pill {
       display: flex;
-      gap: 32px;
-      align-items: flex-start;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      flex: 1;
+      min-width: 0;
     }
 
-    @media (max-width: 600px) {
-      #conclude-layout { flex-direction: column; }
-    }
-
-    #conclude-image-col {
-      flex-shrink: 0;
-    }
-
-    #conclude-artifact-image {
-      width: 150px;
-      height: 150px;
+    .investigate-artifact-thumb {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
       object-fit: cover;
-      border-radius: var(--radius);
-      display: block;
+      flex-shrink: 0;
+      background: var(--surface-2);
     }
 
-    .conclude-image-placeholder {
-      width: 150px;
-      height: 150px;
-      background: var(--navy-lighter);
-      border-radius: var(--radius);
+    .investigate-artifact-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .investigate-artifact-date {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Investigation form */
+    .inv-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 14px;
+      transition: border-color var(--dur) var(--ease);
+    }
+
+    .inv-section:focus-within {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 1px var(--gold-dim);
+    }
+
+    .inv-section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px 10px;
+    }
+
+    .inv-section-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      padding: 12px;
-      font-size: 12px;
-      color: var(--gray-mid);
+      font-size: 14px;
+      flex-shrink: 0;
     }
 
-    #conclude-summary-col {
-      flex: 1;
-    }
+    .icon-observe { background: rgba(232,184,75,0.15); }
+    .icon-evidence { background: rgba(62,207,207,0.12); }
+    .icon-interpret { background: rgba(139,92,246,0.15); }
+    .icon-hypothesis { background: rgba(52,211,153,0.12); }
 
-    .conclude-heading {
-      font-size: 24px;
+    .inv-section-title {
+      font-size: 13px;
       font-weight: 700;
-      color: var(--gold);
-      margin-bottom: 8px;
-    }
-
-    .conclude-artifact-title {
-      font-size: 18px;
-      font-weight: 600;
       color: var(--white);
-      margin-bottom: 4px;
     }
 
-    .conclude-artifact-date {
-      font-size: 14px;
-      color: var(--gold);
-      margin-bottom: 20px;
-    }
-
-    .conclude-section {
-      background: var(--navy-light);
-      border-radius: var(--radius);
-      padding: 14px;
-      margin-bottom: 12px;
-    }
-
-    .conclude-section-label {
+    .inv-section-hint {
       font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 6px;
+      color: var(--muted);
+      margin-left: auto;
     }
 
-    .conclude-section-text {
-      font-size: 14px;
-      color: var(--text-main);
+    .inv-prompt {
+      font-size: 12px;
+      color: var(--muted-hi);
+      padding: 0 16px 10px;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    .inv-textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--white);
+      resize: vertical;
+      min-height: 90px;
+      outline: none;
+      font-family: inherit;
       line-height: 1.6;
     }
 
-    /* ── Navigation row ── */
-    .nav-row {
+    .inv-textarea::placeholder { color: var(--muted); }
+
+    .inv-footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .char-count {
+      font-size: 11px;
+      color: var(--muted);
+      transition: color var(--dur) var(--ease);
+    }
+
+    .char-count.valid { color: var(--green); }
+    .char-count.warn { color: var(--gold); }
+
+    .field-check {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-hi);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      transition: all var(--dur) var(--ease);
+    }
+
+    .field-check.done {
+      background: var(--green);
+      border-color: var(--green);
+      color: #0d0f14;
+    }
+
+    /* Progress tracker */
+    .inv-progress-bar {
+      height: 3px;
+      background: var(--surface-3);
+      border-radius: 99px;
       margin-bottom: 20px;
-      flex-wrap: wrap;
+      overflow: hidden;
+    }
+
+    .inv-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--teal));
+      border-radius: 99px;
+      transition: width 0.4s var(--ease);
+    }
+
+    .inv-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
       gap: 12px;
     }
 
-    .nav-row-right {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      margin-top: 20px;
+    .inv-completion-hint {
+      font-size: 12px;
+      color: var(--muted);
     }
 
-    /* ── Divider ── */
-    .divider {
-      height: 1px;
-      background: var(--navy-lighter);
+    /* ── CONCLUDE PANEL ── */
+    #panel-conclude { padding: 28px 24px; }
+
+    .conclude-hero {
+      text-align: center;
+      padding: 24px 0 32px;
+      position: relative;
+    }
+
+    .conclude-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(52,211,153,0.12);
+      border: 1px solid rgba(52,211,153,0.3);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 14px;
+    }
+
+    .conclude-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+
+    .conclude-subtitle {
+      font-size: 13px;
+      color: var(--muted-hi);
+    }
+
+    /* Score ring */
+    .score-ring-wrap {
+      display: flex;
+      justify-content: center;
       margin: 24px 0;
     }
 
-    /* ── Dialog / Modal ── */
-    #confirm-dialog-overlay {
+    .score-ring {
+      width: 100px;
+      height: 100px;
+      position: relative;
+    }
+
+    .score-ring svg { transform: rotate(-90deg); }
+
+    .score-ring-bg { fill: none; stroke: var(--surface-3); stroke-width: 8; }
+    .score-ring-fill { fill: none; stroke: var(--gold); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease); }
+
+    .score-ring-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .score-ring-num {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    .score-ring-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Rubric grid */
+    .rubric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 500px) { .rubric-grid { grid-template-columns: 1fr; } }
+
+    .rubric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+
+    .rubric-card-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .rubric-bar-wrap {
+      height: 4px;
+      background: var(--surface-3);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .rubric-bar { height: 100%; border-radius: 99px; background: var(--gold); transition: width 0.8s var(--ease); }
+
+    .rubric-score-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted-hi);
+    }
+
+    /* Feedback card */
+    .feedback-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+
+    .feedback-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .feedback-text {
+      font-size: 14px;
+      color: var(--muted-hi);
+      line-height: 1.7;
+    }
+
+    /* Summary cards */
+    .summary-grid {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+
+    .summary-card-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .summary-card-text {
+      font-size: 13px;
+      color: var(--muted-hi);
+      line-height: 1.6;
+    }
+
+    .conclude-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding-bottom: 24px;
+    }
+
+    /* Pending score state */
+    .scoring-state {
+      text-align: center;
+      padding: 32px 24px;
+    }
+
+    .scoring-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--surface-3);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Confirm Dialog ── */
+    #dialog-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(10, 15, 30, 0.75);
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(6px);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 100;
       opacity: 0;
       pointer-events: none;
-      transition: opacity var(--transition);
+      transition: opacity var(--dur) var(--ease);
     }
 
-    #confirm-dialog-overlay.open {
-      opacity: 1;
-      pointer-events: auto;
-    }
+    #dialog-overlay.open { opacity: 1; pointer-events: auto; }
 
-    #confirm-dialog {
-      background: var(--navy-light);
-      border: 1px solid var(--navy-lighter);
-      border-radius: var(--radius);
-      padding: 28px 32px;
-      max-width: 420px;
+    .dialog {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius-xl);
+      padding: 28px 28px 24px;
+      max-width: 380px;
       width: 90%;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.96);
+      transition: transform var(--dur) var(--ease);
     }
 
-    #confirm-dialog h3 {
-      margin-bottom: 12px;
-      font-size: 18px;
-    }
+    #dialog-overlay.open .dialog { transform: scale(1); }
 
-    #confirm-dialog p {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 24px;
-      line-height: 1.6;
-    }
+    .dialog-icon { font-size: 28px; margin-bottom: 12px; }
+    .dialog-title { font-size: 17px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .dialog-body { font-size: 13px; color: var(--muted-hi); line-height: 1.6; margin-bottom: 20px; }
+    .dialog-actions { display: flex; gap: 10px; }
+    .dialog-actions .btn { flex: 1; justify-content: center; }
 
-    .dialog-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-    }
-
-    /* ── Aria live region ── */
+    /* ── Aria live ── */
     #aria-live {
       position: absolute;
       width: 1px;
       height: 1px;
       overflow: hidden;
-      clip: rect(0, 0, 0, 0);
+      clip: rect(0,0,0,0);
       white-space: nowrap;
     }
 
-    /* ── Separator dots ── */
-    .step-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--navy-lighter);
-      flex-shrink: 0;
-      transition: background var(--transition);
+    /* ── Loading overlay ── */
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      transition: opacity 0.4s var(--ease);
     }
 
-    .step-dot.active { background: var(--gold); }
-    .step-dot.completed { background: var(--green); }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+
+    .loading-logo {
+      font-size: 32px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
   </style>
 </head>
 <body>
+<div id="loading-overlay"><div class="loading-logo">🔍</div></div>
+<div id="aria-live" aria-live="polite" aria-atomic="true"></div>
+
 <div id="app">
-  <!-- Progress Bar -->
-  <nav id="progress-bar" aria-label="Investigation phases">
-    <div class="phase-step">
-      <span class="phase-label" id="step-discover" aria-current="step">Discover</span>
+  <!-- Progress Rail -->
+  <nav id="progress-rail" aria-label="Investigation phases">
+    <div class="rail-step" id="step-discover">
+      <div class="rail-num">1</div>
+      <div class="rail-label">Discover</div>
     </div>
-    <div class="phase-connector" id="conn-1"></div>
-    <div class="phase-step">
-      <span class="phase-label" id="step-inspect">Inspect</span>
+    <div class="rail-connector" id="conn-1"></div>
+    <div class="rail-step" id="step-inspect">
+      <div class="rail-num">2</div>
+      <div class="rail-label">Inspect</div>
     </div>
-    <div class="phase-connector" id="conn-2"></div>
-    <div class="phase-step">
-      <span class="phase-label" id="step-investigate">Investigate</span>
+    <div class="rail-connector" id="conn-2"></div>
+    <div class="rail-step" id="step-investigate">
+      <div class="rail-num">3</div>
+      <div class="rail-label">Investigate</div>
     </div>
-    <div class="phase-connector" id="conn-3"></div>
-    <div class="phase-step">
-      <span class="phase-label" id="step-conclude">Conclude</span>
+    <div class="rail-connector" id="conn-3"></div>
+    <div class="rail-step" id="step-conclude">
+      <div class="rail-num">4</div>
+      <div class="rail-label">Conclude</div>
     </div>
   </nav>
 
-  <!-- Main Content -->
-  <main id="content">
+  <!-- Panel Host -->
+  <div id="panel-host">
 
-    <!-- PHASE 1: DISCOVER -->
-    <section class="phase-panel" id="panel-discover" aria-label="Discover phase">
-      <div class="phase-title">
-        <h2>Discover</h2>
-        <p class="phase-subtitle">Search for a historical artifact to investigate</p>
-      </div>
-
-      <div id="discover-search" role="search">
-        <label for="search-input" class="sr-only">Search artifacts</label>
-        <input
-          id="search-input"
-          type="search"
-          placeholder="Search for a historical artifact..."
-          autocomplete="off"
-          aria-label="Search artifacts"
-        />
-        <button class="btn btn-primary" id="search-btn" style="min-width:100px;" aria-label="Search">
-          Search
-        </button>
-      </div>
-
-      <div id="results-area" aria-live="polite" aria-atomic="false">
-        <div class="state-message" id="empty-state">
-          Search for a historical artifact to begin your investigation
+    <!-- ── PANEL 1: DISCOVER ── -->
+    <section id="panel-discover" class="panel" role="main" aria-label="Discover artifacts">
+      <div class="discover-hero">
+        <div class="discover-badge">🏛️ Artifact Investigation Studio</div>
+        <h1 class="discover-title">What will you investigate?</h1>
+        <p class="discover-subtitle">Search the Smithsonian Open Access collection. Select an artifact to begin your structured historical inquiry.</p>
+        <div class="search-row">
+          <input id="search-input" class="search-input" type="text" placeholder="e.g. Civil War rifle, ancient pottery, moon landing…" aria-label="Search artifacts" maxlength="200" />
+          <button id="search-btn" class="btn btn-primary" aria-label="Search">Search</button>
+        </div>
+        <div class="chip-row">
+          <span class="chip" data-query="Civil War weapons">⚔️ Civil War</span>
+          <span class="chip" data-query="ancient Egypt artifacts">🏺 Ancient Egypt</span>
+          <span class="chip" data-query="Apollo moon landing">🚀 Space Race</span>
+          <span class="chip" data-query="Native American pottery">🪶 Native American</span>
+          <span class="chip" data-query="World War II uniform">🎖️ WWII</span>
+          <span class="chip" data-query="Victorian era tools">🔧 Victorian</span>
         </div>
       </div>
+      <div id="results-area"></div>
     </section>
 
-    <!-- PHASE 2: INSPECT -->
-    <section class="phase-panel" id="panel-inspect" aria-label="Inspect phase">
-      <div class="nav-row">
-        <button class="btn btn-link" id="inspect-back-btn" aria-label="Back to search">
-          ← Back to Search
-        </button>
-      </div>
-
-      <div class="phase-title">
-        <h2>Inspect</h2>
-        <p class="phase-subtitle">Examine the artifact carefully before beginning your investigation</p>
-      </div>
-
-      <div id="inspect-layout">
-        <div id="inspect-image-col">
-          <div id="inspect-image-area"></div>
-        </div>
-        <div id="inspect-meta-col">
-          <h1 id="inspect-title" style="margin-bottom:16px;font-size:22px;"></h1>
-          <div id="inspect-meta-rows"></div>
-          <p class="meta-description" id="inspect-description"></p>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-      <div class="nav-row-right">
-        <button class="btn btn-primary" id="begin-investigate-btn">
-          Begin Investigation →
-        </button>
-      </div>
-    </section>
-
-    <!-- PHASE 3: INVESTIGATE -->
-    <section class="phase-panel" id="panel-investigate" aria-label="Investigate phase">
-      <div class="nav-row">
-        <button class="btn btn-link" id="investigate-back-btn" aria-label="Back to inspect">
-          ← Back to Inspect
-        </button>
-      </div>
-
-      <div class="phase-title">
-        <h2>Investigate</h2>
-        <p class="phase-subtitle">Use the Observation–Evidence–Claim framework to analyze the artifact</p>
-      </div>
-
-      <!-- Field 1: Observations -->
-      <div class="field-group">
-        <label for="field-observations" class="field-label">What do you observe?</label>
-        <textarea
-          id="field-observations"
-          class="field-textarea"
-          placeholder="Describe exactly what you see: materials, colors, markings, size, condition, any text or symbols..."
-          aria-describedby="count-observations"
-        ></textarea>
-        <div class="char-count invalid" id="count-observations" aria-live="polite">0 / 50 minimum</div>
-      </div>
-
-      <!-- Field 2: Evidence -->
-      <div class="field-group">
-        <label for="field-evidence" class="field-label">What is your evidence?</label>
-        <textarea
-          id="field-evidence"
-          class="field-textarea"
-          placeholder="Based on your observations, what do these details suggest about this artifact's origin, purpose, or age?"
-          aria-describedby="count-evidence"
-        ></textarea>
-        <div class="char-count invalid" id="count-evidence" aria-live="polite">0 / 50 minimum</div>
-      </div>
-
-      <!-- Field 3: Claims -->
-      <div class="field-group">
-        <label for="field-claims" class="field-label">What do you claim?</label>
-        <textarea
-          id="field-claims"
-          class="field-textarea"
-          placeholder="Drawing on your observations and evidence, what is your overall conclusion about this artifact and its historical significance?"
-          aria-describedby="count-claims"
-        ></textarea>
-        <div class="char-count invalid" id="count-claims" aria-live="polite">0 / 50 minimum</div>
-      </div>
-
-      <div class="nav-row-right">
-        <button class="btn btn-primary" id="submit-investigation-btn" disabled aria-disabled="true">
-          Submit Investigation →
-        </button>
-      </div>
-    </section>
-
-    <!-- PHASE 4: CONCLUDE -->
-    <section class="phase-panel" id="panel-conclude" aria-label="Conclude phase">
-      <div class="phase-title">
-        <h2 class="conclude-heading">Your Investigation Complete</h2>
-        <p class="phase-subtitle">Review your work before final submission</p>
-      </div>
-
-      <div id="conclude-layout">
-        <div id="conclude-image-col">
-          <div id="conclude-image-area"></div>
-        </div>
-        <div id="conclude-summary-col">
-          <div class="conclude-artifact-title" id="conclude-title"></div>
-          <div class="conclude-artifact-date" id="conclude-date"></div>
-
-          <div class="conclude-section">
-            <div class="conclude-section-label">Your Observations</div>
-            <div class="conclude-section-text" id="conclude-observations"></div>
+    <!-- ── PANEL 2: INSPECT ── -->
+    <section id="panel-inspect" class="panel" role="main" aria-label="Inspect artifact">
+      <div class="inspect-layout">
+        <div class="inspect-image-col">
+          <div id="inspect-img-wrap" style="width:100%;height:100%;position:relative;">
+            <div class="inspect-img-placeholder" id="inspect-placeholder">
+              <div class="placeholder-icon">🏛️</div>
+              <div class="placeholder-text">No image available</div>
+            </div>
           </div>
-          <div class="conclude-section">
-            <div class="conclude-section-label">Your Evidence</div>
-            <div class="conclude-section-text" id="conclude-evidence"></div>
+          <div class="inspect-img-overlay"></div>
+          <div class="inspect-img-caption">
+            <div class="source-pill" id="inspect-source-pill">📚 Smithsonian</div>
           </div>
-          <div class="conclude-section">
-            <div class="conclude-section-label">Your Claims</div>
-            <div class="conclude-section-text" id="conclude-claims"></div>
+        </div>
+        <div class="inspect-detail-col">
+          <div class="inspect-back-row">
+            <button id="inspect-back-btn" class="btn btn-ghost" aria-label="Back to search">← Back</button>
           </div>
-
-          <div class="nav-row-right" style="margin-top:20px;">
-            <button class="btn btn-primary" id="submit-final-btn">
-              Submit Final Investigation
-            </button>
+          <h2 id="inspect-title" class="inspect-title">Loading…</h2>
+          <div id="inspect-meta-table" class="meta-table"></div>
+          <div class="divider"></div>
+          <div class="inspect-desc-label">Description</div>
+          <p id="inspect-desc" class="inspect-desc">No description available.</p>
+          <div class="inspect-cta-row">
+            <button id="begin-investigate-btn" class="btn btn-primary">Begin Investigation →</button>
           </div>
         </div>
       </div>
     </section>
 
-  </main><!-- /#content -->
-</div><!-- /#app -->
+    <!-- ── PANEL 3: INVESTIGATE ── -->
+    <section id="panel-investigate" class="panel" role="main" aria-label="Investigate artifact">
+      <div class="investigate-header">
+        <div class="investigate-artifact-pill">
+          <img id="inv-thumb" class="investigate-artifact-thumb" src="" alt="" />
+          <div>
+            <div id="inv-artifact-name" class="investigate-artifact-name">—</div>
+            <div id="inv-artifact-date" class="investigate-artifact-date">—</div>
+          </div>
+        </div>
+        <button id="investigate-back-btn" class="btn btn-ghost" aria-label="Back to inspect">← Back</button>
+      </div>
 
-<!-- Confirmation Dialog -->
-<div id="confirm-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="dialog-heading" aria-describedby="dialog-body">
-  <div id="confirm-dialog">
-    <h3 id="dialog-heading">Ready to submit?</h3>
-    <p id="dialog-body">Are you sure you want to submit? You cannot make changes after submission.</p>
+      <div class="inv-progress-bar">
+        <div id="inv-progress-fill" class="inv-progress-fill" style="width:0%"></div>
+      </div>
+
+      <!-- Observations -->
+      <div class="inv-section">
+        <div class="inv-section-head">
+          <div class="inv-section-icon icon-observe">👁️</div>
+          <div class="inv-section-title">Observations</div>
+          <div class="inv-section-hint">What do you see?</div>
+        </div>
+        <div class="inv-prompt">Describe exactly what you observe — materials, colors, markings, condition, size, or any physical details.</div>
+        <textarea id="field-observations" class="inv-textarea" placeholder="e.g. The object is made of dark iron with a wooden handle. There are engravings along the barrel…" aria-label="Observations" rows="4"></textarea>
+        <div class="inv-footer">
+          <span id="count-observations" class="char-count">0 / 50 min</span>
+          <div id="check-observations" class="field-check" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <!-- Evidence -->
+      <div class="inv-section">
+        <div class="inv-section-head">
+          <div class="inv-section-icon icon-evidence">🔍</div>
+          <div class="inv-section-title">Evidence</div>
+          <div class="inv-section-hint">What does it tell you?</div>
+        </div>
+        <div class="inv-prompt">What specific details from your observations serve as evidence? What do they suggest about the artifact's origin, use, or time period?</div>
+        <textarea id="field-evidence" class="inv-textarea" placeholder="e.g. The style of the engraving matches patterns used in the 1860s. The wear pattern suggests heavy use…" aria-label="Evidence" rows="4"></textarea>
+        <div class="inv-footer">
+          <span id="count-evidence" class="char-count">0 / 50 min</span>
+          <div id="check-evidence" class="field-check" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <!-- Interpretation -->
+      <div class="inv-section">
+        <div class="inv-section-head">
+          <div class="inv-section-icon icon-interpret">💡</div>
+          <div class="inv-section-title">Interpretation</div>
+          <div class="inv-section-hint">What does it mean?</div>
+        </div>
+        <div class="inv-prompt">Based on your evidence, what can you interpret about the historical context, the people who made or used this object, or its significance?</div>
+        <textarea id="field-interpretation" class="inv-textarea" placeholder="e.g. This artifact was likely used by a soldier during the Civil War. The quality suggests it belonged to an officer…" aria-label="Interpretation" rows="4"></textarea>
+        <div class="inv-footer">
+          <span id="count-interpretation" class="char-count">0 / 50 min</span>
+          <div id="check-interpretation" class="field-check" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <!-- Hypothesis -->
+      <div class="inv-section">
+        <div class="inv-section-head">
+          <div class="inv-section-icon icon-hypothesis">🧪</div>
+          <div class="inv-section-title">Hypothesis</div>
+          <div class="inv-section-hint">What's your conclusion?</div>
+        </div>
+        <div class="inv-prompt">Form a testable hypothesis: what do you believe this artifact is, who made it, when, and why? What open questions remain?</div>
+        <textarea id="field-hypothesis" class="inv-textarea" placeholder="e.g. I believe this is a Union Army rifle from circa 1863, issued to infantry soldiers. I would want to investigate the maker's mark further…" aria-label="Hypothesis" rows="4"></textarea>
+        <div class="inv-footer">
+          <span id="count-hypothesis" class="char-count">0 / 50 min</span>
+          <div id="check-hypothesis" class="field-check" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="inv-actions">
+        <span id="inv-completion-hint" class="inv-completion-hint">Complete all 4 fields to submit</span>
+        <button id="submit-investigation-btn" class="btn btn-teal" disabled aria-disabled="true">Submit Investigation →</button>
+      </div>
+    </section>
+
+    <!-- ── PANEL 4: CONCLUDE ── -->
+    <section id="panel-conclude" class="panel" role="main" aria-label="Investigation conclusion">
+      <div class="conclude-hero">
+        <div class="conclude-badge">✓ Investigation Complete</div>
+        <h2 id="conclude-artifact-title" class="conclude-title">—</h2>
+        <p id="conclude-artifact-date" class="conclude-subtitle">—</p>
+      </div>
+
+      <!-- Score ring (shown after scoring) -->
+      <div id="score-section" style="display:none">
+        <div class="score-ring-wrap">
+          <div class="score-ring">
+            <svg viewBox="0 0 100 100" width="100" height="100">
+              <circle class="score-ring-bg" cx="50" cy="50" r="42"/>
+              <circle id="score-ring-fill" class="score-ring-fill" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"/>
+            </svg>
+            <div class="score-ring-text">
+              <div id="score-ring-num" class="score-ring-num">—</div>
+              <div class="score-ring-label">Score</div>
+            </div>
+          </div>
+        </div>
+        <div class="rubric-grid" id="rubric-grid"></div>
+        <div class="feedback-card" id="feedback-card" style="display:none">
+          <div class="feedback-label">Tutor Feedback</div>
+          <p id="feedback-text" class="feedback-text"></p>
+        </div>
+      </div>
+
+      <!-- Scoring pending -->
+      <div id="scoring-pending" class="scoring-state">
+        <div class="scoring-spinner"></div>
+        <p style="font-size:13px;color:var(--muted-hi);">Scoring your investigation…</p>
+      </div>
+
+      <!-- Summary of findings -->
+      <div class="summary-grid" id="summary-grid"></div>
+
+      <div class="conclude-actions">
+        <button id="new-investigation-btn" class="btn btn-ghost">New Investigation</button>
+        <button id="submit-final-btn" class="btn btn-primary">Submit &amp; Finalize</button>
+      </div>
+    </section>
+
+  </div><!-- /panel-host -->
+</div><!-- /app -->
+
+<!-- Confirm Dialog -->
+<div id="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+  <div class="dialog">
+    <div class="dialog-icon">📋</div>
+    <h3 id="dialog-title" class="dialog-title">Finalize Investigation?</h3>
+    <p class="dialog-body">Once submitted, your investigation will be scored and saved. Make sure you're satisfied with all four fields before continuing.</p>
     <div class="dialog-actions">
-      <button class="btn btn-secondary" id="dialog-cancel-btn">Cancel</button>
-      <button class="btn btn-primary" id="dialog-confirm-btn">Yes, Submit</button>
+      <button id="dialog-cancel-btn" class="btn btn-ghost">Go Back</button>
+      <button id="dialog-confirm-btn" class="btn btn-primary">Submit</button>
     </div>
   </div>
 </div>
-
-<!-- Aria live region for screen reader announcements -->
-<div id="aria-live" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 (function () {
   'use strict';
 
-  // ──────────────────────────────────────────────
-  // State
-  // ──────────────────────────────────────────────
+  // ── Constants ──────────────────────────────────────────────────────────────
   const MIN_CHARS = 50;
-  const DEBOUNCE_MS = 500;
+  const DEBOUNCE_MS = 600;
+  const PHASES = ['discover', 'inspect', 'investigate', 'conclude'];
 
+  // ── Plugin bridge state ────────────────────────────────────────────────────
+  let parentOrigin = null;
   let sessionId = null;
   let pluginId = 'artifact-studio';
   let conversationId = null;
-  let parentOrigin = null;
   let initialized = false;
 
-  let state = {
+  // ── App state ──────────────────────────────────────────────────────────────
+  const state = {
     phase: 'discover',
     searchQuery: '',
+    searchResults: [],
     selectedArtifact: null,
     investigation: {
       observations: '',
       evidence: '',
-      claims: '',
-      submittedAt: null
-    }
+      interpretation: '',
+      hypothesis: '',
+      evidenceTags: [],
+      submittedAt: null,
+      stepTimestamps: {},
+    },
+    completionStatus: 'in_progress',
+    score: null,
+    llmFeedback: null,
   };
 
-  let searchResults = [];
   let stateDebounceTimer = null;
 
-  // ──────────────────────────────────────────────
-  // postMessage helpers
-  // ──────────────────────────────────────────────
+  // ── Messaging ──────────────────────────────────────────────────────────────
   function sendMessage(msg) {
     if (!parentOrigin) return;
-    parent.postMessage(msg, parentOrigin);
+    window.parent.postMessage(msg, '*');
   }
 
   function sendReady() {
     sendMessage({ type: 'PLUGIN_READY', version: 1, sessionId, pluginId });
   }
 
-  function sendToolResult(toolCallId, result, isError) {
-    sendMessage({ type: 'TOOL_RESULT', version: 1, sessionId, pluginId, toolCallId, result, isError: !!isError });
-  }
-
   function sendStateUpdate() {
-    sendMessage({ type: 'STATE_UPDATE', version: 1, sessionId, pluginId, state: JSON.parse(JSON.stringify(state)), partial: false });
+    sendMessage({
+      type: 'STATE_UPDATE',
+      version: 1,
+      sessionId,
+      pluginId,
+      state: buildSerializableState(),
+      partial: false,
+    });
   }
 
   function sendStateUpdateDebounced() {
@@ -905,17 +1402,34 @@
     stateDebounceTimer = setTimeout(sendStateUpdate, DEBOUNCE_MS);
   }
 
+  function sendToolResult(toolCallId, result, isError) {
+    sendMessage({
+      type: 'TOOL_RESULT',
+      version: 1,
+      sessionId,
+      pluginId,
+      toolCallId,
+      result,
+      isError: !!isError,
+    });
+  }
+
   function sendPluginComplete() {
-    const a = state.selectedArtifact;
+    const art = state.selectedArtifact;
     const inv = state.investigation;
-    const summary = `Investigation of "${a ? a.title : 'artifact'}" complete. Observations: ${inv.observations.length} chars. Evidence: ${inv.evidence.length} chars. Claims: ${inv.claims.length} chars.`;
+    const summary = 'Investigation of "' + (art ? art.title : 'artifact') + '" complete. ' +
+      'Observations: ' + inv.observations.length + ' chars. ' +
+      'Evidence: ' + inv.evidence.length + ' chars. ' +
+      'Interpretation: ' + inv.interpretation.length + ' chars. ' +
+      'Hypothesis: ' + inv.hypothesis.length + ' chars.';
+
     sendMessage({
       type: 'PLUGIN_COMPLETE',
       version: 1,
       sessionId,
       pluginId,
-      finalState: JSON.parse(JSON.stringify(state)),
-      summary
+      finalState: buildSerializableState(),
+      summary,
     });
   }
 
@@ -923,19 +1437,39 @@
     sendMessage({ type: 'PLUGIN_ERROR', version: 1, sessionId, pluginId, error, fatal: !!fatal });
   }
 
-  // ──────────────────────────────────────────────
-  // postMessage listener
-  // ──────────────────────────────────────────────
+  function buildSerializableState() {
+    return {
+      phase: state.phase,
+      searchQuery: state.searchQuery,
+      selectedArtifact: state.selectedArtifact ? {
+        id: state.selectedArtifact.id,
+        title: state.selectedArtifact.title,
+        date: state.selectedArtifact.date,
+        source: state.selectedArtifact.source,
+        thumbnailUrl: state.selectedArtifact.thumbnailUrl || state.selectedArtifact.imageUrl || null,
+        imageUrl: state.selectedArtifact.imageUrl || null,
+        medium: state.selectedArtifact.medium || null,
+        description: state.selectedArtifact.description || null,
+      } : null,
+      investigation: {
+        observations: state.investigation.observations,
+        evidence: state.investigation.evidence,
+        interpretation: state.investigation.interpretation,
+        hypothesis: state.investigation.hypothesis,
+        evidenceTags: state.investigation.evidenceTags,
+        submittedAt: state.investigation.submittedAt,
+        stepTimestamps: state.investigation.stepTimestamps,
+      },
+      completionStatus: state.completionStatus,
+    };
+  }
+
+  // ── postMessage listener ───────────────────────────────────────────────────
   window.addEventListener('message', function (event) {
-    // Rule 19: validate origin first
     if (!initialized) {
-      // Only accept INIT from any origin the first time (we learn parent origin from it)
       if (!event.data || event.data.type !== 'INIT' || event.data.version !== 1) return;
     } else {
-      if (event.origin !== parentOrigin) {
-        // Drop and do not process; we can't audit_log from client side but we drop silently
-        return;
-      }
+      if (event.origin !== parentOrigin) return;
     }
 
     const msg = event.data;
@@ -972,393 +1506,226 @@
       setPhase('discover');
     }
 
+    hideLoadingOverlay();
     sendReady();
   }
 
-  function restoreState(restored) {
-    if (restored.phase) state.phase = restored.phase;
-    if (typeof restored.searchQuery === 'string') state.searchQuery = restored.searchQuery;
-    if (restored.selectedArtifact) state.selectedArtifact = restored.selectedArtifact;
-    if (restored.investigation) {
-      if (typeof restored.investigation.observations === 'string') state.investigation.observations = restored.investigation.observations;
-      if (typeof restored.investigation.evidence === 'string') state.investigation.evidence = restored.investigation.evidence;
-      if (typeof restored.investigation.claims === 'string') state.investigation.claims = restored.investigation.claims;
-      if (restored.investigation.submittedAt) state.investigation.submittedAt = restored.investigation.submittedAt;
+  function restoreState(r) {
+    if (r.phase && PHASES.includes(r.phase)) state.phase = r.phase;
+    if (typeof r.searchQuery === 'string') state.searchQuery = r.searchQuery;
+    if (r.selectedArtifact && typeof r.selectedArtifact === 'object') {
+      state.selectedArtifact = r.selectedArtifact;
     }
+    if (r.investigation && typeof r.investigation === 'object') {
+      const inv = r.investigation;
+      if (typeof inv.observations === 'string') state.investigation.observations = inv.observations;
+      if (typeof inv.evidence === 'string') state.investigation.evidence = inv.evidence;
+      if (typeof inv.interpretation === 'string') state.investigation.interpretation = inv.interpretation;
+      if (typeof inv.hypothesis === 'string') state.investigation.hypothesis = inv.hypothesis;
+      if (Array.isArray(inv.evidenceTags)) state.investigation.evidenceTags = inv.evidenceTags;
+      if (inv.submittedAt) state.investigation.submittedAt = inv.submittedAt;
+      if (inv.stepTimestamps) state.investigation.stepTimestamps = inv.stepTimestamps;
+    }
+    if (r.completionStatus) state.completionStatus = r.completionStatus;
 
-    // Restore field values
+    // Restore textarea values
     document.getElementById('field-observations').value = state.investigation.observations;
     document.getElementById('field-evidence').value = state.investigation.evidence;
-    document.getElementById('field-claims').value = state.investigation.claims;
+    document.getElementById('field-interpretation').value = state.investigation.interpretation;
+    document.getElementById('field-hypothesis').value = state.investigation.hypothesis;
     updateCharCounts();
 
     if (state.selectedArtifact) {
       renderInspectPanel(state.selectedArtifact);
+      updateInvestigateHeader(state.selectedArtifact);
+    }
+
+    if (state.phase === 'conclude') {
       renderConcludePanel();
     }
 
     setPhase(state.phase);
   }
 
-  // ──────────────────────────────────────────────
-  // Tool handlers
-  // ──────────────────────────────────────────────
+  // ── Tool handlers ──────────────────────────────────────────────────────────
   async function handleToolInvoke(msg) {
     const { toolName, toolCallId, arguments: args } = msg;
 
     try {
-      if (toolName === 'search_artifacts' || toolName === 'artifact_search') {
-        const query = args.query || '';
-        const data = await searchArtifacts(query);
-        state.searchQuery = query;
-        searchResults = data.artifacts || [];
-        renderResults(searchResults);
-        setPhase('discover');
-        sendToolResult(toolCallId, data, false);
+      switch (toolName) {
 
-      } else if (toolName === 'get_artifact_detail' || toolName === 'artifact_select') {
-        const id = args.id || args.artifactId;
-        const source = args.source || 'smithsonian';
-        const detail = await getArtifactDetail(id, source);
-        if (detail) {
+        case 'search_artifacts': {
+          const query = sanitizeString(args.query || '');
+          if (!query) { sendToolResult(toolCallId, { error: 'query is required' }, true); return; }
+          state.searchQuery = query;
+          setPhase('discover');
+          renderLoading();
+          const data = await apiSearchArtifacts(query, args.dateRange, args.culturalContext, args.page || 0);
+          state.searchResults = data.artifacts || [];
+          renderResults(state.searchResults, data.source, data.totalCount);
+          sendStateUpdate();
+          sendToolResult(toolCallId, data, false);
+          break;
+        }
+
+        case 'get_artifact_detail': {
+          const id = sanitizeString(args.id || '');
+          const source = (args.source === 'loc') ? 'loc' : 'smithsonian';
+          if (!id) { sendToolResult(toolCallId, { error: 'id is required' }, true); return; }
+          const detail = await apiGetArtifactDetail(id, source);
+          if (detail && detail.id !== id && detail.title === 'Unavailable') {
+            sendToolResult(toolCallId, { error: 'Artifact not found' }, true);
+            return;
+          }
           state.selectedArtifact = detail;
           renderInspectPanel(detail);
+          updateInvestigateHeader(detail);
           setPhase('inspect');
+          sendStateUpdate();
+          sendToolResult(toolCallId, detail, false);
+          break;
         }
-        sendToolResult(toolCallId, detail, !detail);
 
-      } else if (toolName === 'submit_investigation' || toolName === 'artifact_submit_inquiry') {
-        const inv = state.investigation;
-        if (inv.observations.length < MIN_CHARS || inv.evidence.length < MIN_CHARS || inv.claims.length < MIN_CHARS) {
-          sendToolResult(toolCallId, { error: 'Investigation incomplete', detail: 'All three fields must have at least 50 characters.' }, true);
-          return;
+        case 'submit_investigation': {
+          const inv = state.investigation;
+          if (inv.observations.length < MIN_CHARS || inv.evidence.length < MIN_CHARS ||
+              inv.interpretation.length < MIN_CHARS || inv.hypothesis.length < MIN_CHARS) {
+            sendToolResult(toolCallId, {
+              error: 'Investigation incomplete',
+              detail: 'All four fields must have at least 50 characters.',
+              fieldLengths: {
+                observations: inv.observations.length,
+                evidence: inv.evidence.length,
+                interpretation: inv.interpretation.length,
+                hypothesis: inv.hypothesis.length,
+              }
+            }, true);
+            return;
+          }
+          inv.submittedAt = new Date().toISOString();
+          state.completionStatus = 'INVESTIGATION_COMPLETE';
+          renderConcludePanel();
+          setPhase('conclude');
+          sendStateUpdate();
+          sendToolResult(toolCallId, { investigation: buildSerializableState().investigation, artifact: state.selectedArtifact }, false);
+          triggerScoring();
+          break;
         }
-        inv.submittedAt = new Date().toISOString();
-        state.phase = 'conclude';
-        renderConcludePanel();
-        setPhase('conclude');
-        sendToolResult(toolCallId, { investigation: JSON.parse(JSON.stringify(inv)), artifact: state.selectedArtifact }, false);
-        sendPluginComplete();
 
-      } else if (toolName === 'artifact_annotate') {
-        // Show in investigate phase if applicable
-        const result = { artifactId: args.artifactId, annotation: args.annotation, annotationType: args.annotationType };
-        sendToolResult(toolCallId, result, false);
+        case 'reset_investigation': {
+          const prevArtifact = state.selectedArtifact;
+          state.investigation = {
+            observations: '',
+            evidence: '',
+            interpretation: '',
+            hypothesis: '',
+            evidenceTags: [],
+            submittedAt: null,
+            stepTimestamps: {},
+          };
+          state.completionStatus = 'in_progress';
+          state.score = null;
+          state.llmFeedback = null;
 
-      } else {
-        sendToolResult(toolCallId, { error: `Unknown tool: ${toolName}` }, true);
+          document.getElementById('field-observations').value = '';
+          document.getElementById('field-evidence').value = '';
+          document.getElementById('field-interpretation').value = '';
+          document.getElementById('field-hypothesis').value = '';
+          updateCharCounts();
+
+          if (prevArtifact) {
+            setPhase('investigate');
+          } else {
+            state.selectedArtifact = null;
+            state.searchResults = [];
+            setPhase('discover');
+          }
+          sendStateUpdate();
+          sendToolResult(toolCallId, { reset: true, returnedToPhase: state.phase }, false);
+          break;
+        }
+
+        case 'get_investigation_state': {
+          sendToolResult(toolCallId, buildSerializableState(), false);
+          break;
+        }
+
+        default:
+          sendToolResult(toolCallId, { error: 'Unknown tool: ' + toolName }, true);
       }
     } catch (err) {
       sendToolResult(toolCallId, { error: err.message || 'Tool execution failed' }, true);
     }
   }
 
-  // ──────────────────────────────────────────────
-  // API calls
-  // ──────────────────────────────────────────────
-  async function searchArtifacts(query) {
-    const url = `/api/trpc/artifacts.search?input=${encodeURIComponent(JSON.stringify({ json: { query, page: 0 } }))}`;
+  // ── API calls ──────────────────────────────────────────────────────────────
+  async function apiSearchArtifacts(query, dateRange, culturalContext, page) {
+    const input = { query, page: page || 0 };
+    if (dateRange) input.dateRange = dateRange;
+    if (culturalContext) input.culturalContext = culturalContext;
+    const url = '/api/trpc/artifacts.search?input=' + encodeURIComponent(JSON.stringify({ json: input }));
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
-    // tRPC v11 wraps result in { result: { data: { json: ... } } }
-    return json.result?.data?.json ?? json.result?.data ?? { artifacts: [], totalCount: 0 };
+    return json.result?.data?.json ?? json.result?.data ?? { artifacts: [], totalCount: 0, source: 'unavailable' };
   }
 
-  async function getArtifactDetail(id, source) {
-    const url = `/api/trpc/artifacts.getDetail?input=${encodeURIComponent(JSON.stringify({ json: { id, source } }))}`;
+  async function apiGetArtifactDetail(id, source) {
+    const url = '/api/trpc/artifacts.getDetail?input=' + encodeURIComponent(JSON.stringify({ json: { id, source } }));
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
-    // tRPC v11 wraps result in { result: { data: { json: ... } } }
     return json.result?.data?.json ?? json.result?.data ?? null;
   }
 
-  // ──────────────────────────────────────────────
-  // Phase management
-  // ──────────────────────────────────────────────
-  const phases = ['discover', 'inspect', 'investigate', 'conclude'];
+  async function triggerScoring() {
+    if (!conversationId) return;
+    try {
+      const res = await fetch('/api/plugins/score-investigation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId,
+          finalState: {
+            selectedArtifact: state.selectedArtifact,
+            inquiryQuestion: state.investigation.observations.slice(0, 200),
+            conclusion: state.investigation.hypothesis,
+            annotations: [
+              { type: 'evidence', content: state.investigation.evidence },
+              { type: 'interpretation', content: state.investigation.interpretation },
+            ],
+            observations: state.investigation.observations,
+            evidence: state.investigation.evidence,
+            interpretation: state.investigation.interpretation,
+            hypothesis: state.investigation.hypothesis,
+          },
+          summary: 'Investigation of "' + (state.selectedArtifact?.title || 'artifact') + '"',
+        }),
+      });
 
-  function setPhase(phase) {
-    state.phase = phase;
-
-    // Update panels
-    phases.forEach(function (p) {
-      const panel = document.getElementById('panel-' + p);
-      if (panel) {
-        if (p === phase) {
-          panel.classList.add('visible');
-        } else {
-          panel.classList.remove('visible');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.score) {
+          state.score = data.score;
+          state.llmFeedback = data.score.feedback || null;
+          renderScoreSection(data.score);
+          sendPluginComplete();
+          sendStateUpdate();
         }
       }
-    });
-
-    // Update progress steps
-    const phaseIdx = phases.indexOf(phase);
-    phases.forEach(function (p, i) {
-      const el = document.getElementById('step-' + p);
-      if (!el) return;
-      el.classList.remove('active', 'completed');
-      el.removeAttribute('aria-current');
-      if (i < phaseIdx) {
-        el.classList.add('completed');
-      } else if (i === phaseIdx) {
-        el.classList.add('active');
-        el.setAttribute('aria-current', 'step');
-      }
-    });
-
-    // Update connectors
-    for (let i = 1; i <= 3; i++) {
-      const conn = document.getElementById('conn-' + i);
-      if (!conn) continue;
-      conn.classList.toggle('completed', i <= phaseIdx);
-    }
-
-    announceToScreenReader('Phase: ' + phase.charAt(0).toUpperCase() + phase.slice(1));
-    sendStateUpdate();
-  }
-
-  // ──────────────────────────────────────────────
-  // Rendering: Discover
-  // ──────────────────────────────────────────────
-  function renderLoading() {
-    const area = document.getElementById('results-area');
-    area.innerHTML = '';
-    const grid = document.createElement('div');
-    grid.id = 'results-grid';
-    for (let i = 0; i < 3; i++) {
-      grid.innerHTML += `
-        <div class="skeleton-card" aria-hidden="true">
-          <div class="skeleton skeleton-img"></div>
-          <div class="skeleton-body">
-            <div class="skeleton skeleton-title"></div>
-            <div class="skeleton skeleton-date"></div>
-            <div class="skeleton skeleton-btn"></div>
-          </div>
-        </div>`;
-    }
-    area.appendChild(grid);
-  }
-
-  function renderResults(artifacts) {
-    const area = document.getElementById('results-area');
-    area.innerHTML = '';
-
-    if (!artifacts || artifacts.length === 0) {
-      area.innerHTML = '<div class="state-message">No artifacts found for that search. Try a different term.</div>';
-      return;
-    }
-
-    const grid = document.createElement('div');
-    grid.id = 'results-grid';
-
-    artifacts.forEach(function (art) {
-      const card = document.createElement('div');
-      card.className = 'artifact-card';
-
-      const imageHtml = art.imageUrl
-        ? `<img class="card-image" src="${escapeAttr(art.imageUrl)}" alt="${escapeAttr(art.title || 'Artifact')}" loading="lazy" />`
-        : `<div class="card-image-placeholder" aria-hidden="true">${escapeHtml(art.title || 'Artifact')}</div>`;
-
-      card.innerHTML = `
-        ${imageHtml}
-        <div class="card-body">
-          <div class="card-title">${escapeHtml(art.title || 'Untitled')}</div>
-          ${art.date ? `<div class="card-date">${escapeHtml(art.date)}</div>` : ''}
-          ${art.culturalContext ? `<div class="card-context">${escapeHtml(art.culturalContext)}</div>` : ''}
-          <button class="btn btn-secondary card-select-btn" data-id="${escapeAttr(art.id)}" data-source="${escapeAttr(art.source || 'smithsonian')}" aria-label="Select artifact: ${escapeAttr(art.title || 'Untitled')}">
-            Select Artifact →
-          </button>
-        </div>`;
-
-      card.querySelector('.card-select-btn').addEventListener('click', function () {
-        handleSelectArtifact(art.id, art.source || 'smithsonian', art);
-      });
-
-      grid.appendChild(card);
-    });
-
-    area.appendChild(grid);
-  }
-
-  function renderError(msg) {
-    const area = document.getElementById('results-area');
-    area.innerHTML = `<div class="state-message error">${escapeHtml(msg)}</div>`;
-  }
-
-  // ──────────────────────────────────────────────
-  // Rendering: Inspect
-  // ──────────────────────────────────────────────
-  function renderInspectPanel(artifact) {
-    // Image
-    const imageArea = document.getElementById('inspect-image-area');
-    if (artifact.imageUrl) {
-      imageArea.innerHTML = `<img id="inspect-artifact-image" src="${escapeAttr(artifact.imageUrl)}" alt="${escapeAttr(artifact.title || 'Artifact')}" />`;
-    } else {
-      imageArea.innerHTML = `<div class="inspect-image-placeholder">${escapeHtml(artifact.title || 'Artifact')}</div>`;
-    }
-
-    // Title
-    document.getElementById('inspect-title').textContent = artifact.title || 'Untitled Artifact';
-
-    // Meta rows
-    const metaRows = document.getElementById('inspect-meta-rows');
-    metaRows.innerHTML = '';
-    const fields = [
-      ['Date', artifact.date],
-      ['Medium', artifact.medium],
-      ['Dimensions', artifact.dimensions],
-      ['Provenance', artifact.provenance || artifact.source],
-    ];
-    fields.forEach(function ([label, value]) {
-      if (!value) return;
-      const row = document.createElement('div');
-      row.className = 'meta-row';
-      row.innerHTML = `<span class="meta-label">${escapeHtml(label)}:</span><span class="meta-value">${escapeHtml(value)}</span>`;
-      metaRows.appendChild(row);
-    });
-
-    // Description
-    document.getElementById('inspect-description').textContent = artifact.description || '';
-  }
-
-  // ──────────────────────────────────────────────
-  // Rendering: Conclude
-  // ──────────────────────────────────────────────
-  function renderConcludePanel() {
-    const art = state.selectedArtifact;
-    const inv = state.investigation;
-
-    // Image
-    const imageArea = document.getElementById('conclude-image-area');
-    if (art && art.imageUrl) {
-      imageArea.innerHTML = `<img id="conclude-artifact-image" src="${escapeAttr(art.imageUrl)}" alt="${escapeAttr(art.title || 'Artifact')}" />`;
-    } else {
-      imageArea.innerHTML = `<div class="conclude-image-placeholder">${escapeHtml(art ? art.title : 'Artifact')}</div>`;
-    }
-
-    document.getElementById('conclude-title').textContent = art ? (art.title || 'Untitled') : '';
-    document.getElementById('conclude-date').textContent = art ? (art.date || '') : '';
-    document.getElementById('conclude-observations').textContent = inv.observations;
-    document.getElementById('conclude-evidence').textContent = inv.evidence;
-    document.getElementById('conclude-claims').textContent = inv.claims;
-  }
-
-  // ──────────────────────────────────────────────
-  // Selection flow
-  // ──────────────────────────────────────────────
-  async function handleSelectArtifact(id, source, knownData) {
-    try {
-      let detail = null;
-      if (knownData) {
-        detail = knownData;
-        // Try to enrich with full detail
-        try {
-          const full = await getArtifactDetail(id, source);
-          if (full) detail = full;
-        } catch (_) { /* use knownData */ }
-      } else {
-        detail = await getArtifactDetail(id, source);
-      }
-
-      if (!detail) {
-        renderError('Unable to load artifact details. Please try again.');
-        return;
-      }
-
-      state.selectedArtifact = detail;
-      renderInspectPanel(detail);
-      setPhase('inspect');
     } catch (err) {
-      renderError('Unable to reach artifact database. Please try again.');
+      // Non-fatal — show conclude panel without score
+      document.getElementById('scoring-pending').style.display = 'none';
+      sendPluginComplete();
     }
   }
 
-  // ──────────────────────────────────────────────
-  // Investigation fields
-  // ──────────────────────────────────────────────
-  function updateCharCounts() {
-    const fields = [
-      { id: 'field-observations', countId: 'count-observations', key: 'observations' },
-      { id: 'field-evidence', countId: 'count-evidence', key: 'evidence' },
-      { id: 'field-claims', countId: 'count-claims', key: 'claims' },
-    ];
-
-    let allValid = true;
-    fields.forEach(function (f) {
-      const textarea = document.getElementById(f.id);
-      const counter = document.getElementById(f.countId);
-      const len = textarea.value.length;
-      const valid = len >= MIN_CHARS;
-      if (!valid) allValid = false;
-
-      counter.textContent = `${len} / ${MIN_CHARS} minimum`;
-      counter.classList.toggle('valid', valid);
-      counter.classList.toggle('invalid', !valid);
-    });
-
-    const submitBtn = document.getElementById('submit-investigation-btn');
-    submitBtn.disabled = !allValid;
-    submitBtn.setAttribute('aria-disabled', String(!allValid));
+  // ── Sanitization ───────────────────────────────────────────────────────────
+  function sanitizeString(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/[<>]/g, '').slice(0, 500).trim();
   }
 
-  function bindInvestigateFields() {
-    const fields = [
-      { id: 'field-observations', key: 'observations' },
-      { id: 'field-evidence', key: 'evidence' },
-      { id: 'field-claims', key: 'claims' },
-    ];
-
-    fields.forEach(function (f) {
-      const el = document.getElementById(f.id);
-      el.addEventListener('input', function () {
-        state.investigation[f.key] = el.value;
-        updateCharCounts();
-        sendStateUpdateDebounced();
-      });
-    });
-  }
-
-  // ──────────────────────────────────────────────
-  // Confirmation dialog
-  // ──────────────────────────────────────────────
-  function openDialog() {
-    const overlay = document.getElementById('confirm-dialog-overlay');
-    overlay.classList.add('open');
-    document.getElementById('dialog-confirm-btn').focus();
-  }
-
-  function closeDialog() {
-    document.getElementById('confirm-dialog-overlay').classList.remove('open');
-  }
-
-  function handleFinalSubmit() {
-    state.investigation.submittedAt = new Date().toISOString();
-    closeDialog();
-    announceToScreenReader('Investigation submitted successfully.');
-    renderConcludePanel();
-    sendPluginComplete();
-    // Disable the submit button after submission
-    document.getElementById('submit-final-btn').disabled = true;
-    document.getElementById('submit-final-btn').textContent = 'Submitted ✓';
-  }
-
-  // ──────────────────────────────────────────────
-  // Accessibility
-  // ──────────────────────────────────────────────
-  function announceToScreenReader(text) {
-    const live = document.getElementById('aria-live');
-    live.textContent = '';
-    // Force reflow so screen readers notice the change
-    void live.offsetHeight;
-    live.textContent = text;
-  }
-
-  // ──────────────────────────────────────────────
-  // Escape helpers
-  // ──────────────────────────────────────────────
   function escapeHtml(str) {
     if (str == null) return '';
     return String(str)
@@ -1373,29 +1740,411 @@
     return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  // ──────────────────────────────────────────────
-  // Event bindings
-  // ──────────────────────────────────────────────
+  // ── Phase management ───────────────────────────────────────────────────────
+  function setPhase(phase) {
+    if (!PHASES.includes(phase)) return;
+
+    // Timestamp the step entry
+    if (!state.investigation.stepTimestamps[phase]) {
+      state.investigation.stepTimestamps[phase] = new Date().toISOString();
+    }
+
+    const prev = state.phase;
+    state.phase = phase;
+
+    // Animate panels
+    PHASES.forEach(function (p) {
+      const panel = document.getElementById('panel-' + p);
+      if (!panel) return;
+      if (p === phase) {
+        panel.classList.remove('exit-left');
+        panel.classList.add('active');
+      } else if (p === prev) {
+        panel.classList.remove('active');
+        panel.classList.add('exit-left');
+        setTimeout(function () { panel.classList.remove('exit-left'); }, 300);
+      } else {
+        panel.classList.remove('active', 'exit-left');
+      }
+    });
+
+    // Update rail
+    const phaseIdx = PHASES.indexOf(phase);
+    PHASES.forEach(function (p, i) {
+      const step = document.getElementById('step-' + p);
+      if (!step) return;
+      step.classList.remove('active', 'done');
+      if (i < phaseIdx) step.classList.add('done');
+      else if (i === phaseIdx) step.classList.add('active');
+    });
+
+    for (let i = 1; i <= 3; i++) {
+      const conn = document.getElementById('conn-' + i);
+      if (conn) conn.classList.toggle('done', i <= phaseIdx);
+    }
+
+    announceToScreenReader('Phase: ' + phase.charAt(0).toUpperCase() + phase.slice(1));
+  }
+
+  // ── Rendering: Discover ────────────────────────────────────────────────────
+  function renderLoading() {
+    const area = document.getElementById('results-area');
+    let html = '<div class="skeleton-grid">';
+    for (let i = 0; i < 6; i++) {
+      html += '<div class="skeleton-card">' +
+        '<div class="skeleton-img-wrap"><div class="skeleton" style="width:100%;height:100%"></div></div>' +
+        '<div class="skeleton-body">' +
+        '<div class="skeleton skeleton-title"></div>' +
+        '<div class="skeleton skeleton-date"></div>' +
+        '</div></div>';
+    }
+    html += '</div>';
+    area.innerHTML = html;
+  }
+
+  function renderResults(artifacts, source, totalCount) {
+    const area = document.getElementById('results-area');
+
+    if (!artifacts || artifacts.length === 0) {
+      area.innerHTML = '<div class="state-msg"><div class="state-icon">🔍</div><h3>No artifacts found</h3><p>Try different search terms or use one of the quick searches above.</p></div>';
+      return;
+    }
+
+    const sourceLabel = source === 'loc' ? '📚 Library of Congress' : '🏛️ Smithsonian';
+    let html = '<div class="results-header">' +
+      '<span class="results-count">' + escapeHtml(String(artifacts.length)) + ' of ' + escapeHtml(String(totalCount || artifacts.length)) + ' results</span>' +
+      '<span class="results-source">' + escapeHtml(sourceLabel) + '</span>' +
+      '</div>' +
+      '<div class="artifact-grid">';
+
+    artifacts.forEach(function (art) {
+      const imgHtml = (art.thumbnailUrl || art.imageUrl)
+        ? '<img class="card-img" src="' + escapeAttr(art.thumbnailUrl || art.imageUrl) + '" alt="' + escapeAttr(art.title || 'Artifact') + '" loading="lazy" />'
+        : '<div class="card-img-placeholder">🏛️</div>';
+
+      html += '<div class="artifact-card" data-id="' + escapeAttr(art.id) + '" data-source="' + escapeAttr(art.source || 'smithsonian') + '" role="button" tabindex="0" aria-label="Select artifact: ' + escapeAttr(art.title || 'Untitled') + '">' +
+        '<div class="card-img-wrap">' + imgHtml +
+        '<div class="card-source-badge">' + escapeHtml(art.source === 'loc' ? 'LoC' : 'SI') + '</div>' +
+        '</div>' +
+        '<div class="card-body">' +
+        '<div class="card-title">' + escapeHtml(art.title || 'Untitled') + '</div>' +
+        (art.date ? '<div class="card-date">' + escapeHtml(art.date) + '</div>' : '') +
+        (art.culturalContext ? '<div class="card-context">' + escapeHtml(art.culturalContext) + '</div>' : '') +
+        '<div class="card-cta">Investigate →</div>' +
+        '</div></div>';
+    });
+
+    html += '</div>';
+    area.innerHTML = html;
+
+    // Bind click events
+    area.querySelectorAll('.artifact-card').forEach(function (card) {
+      function select() {
+        const id = card.getAttribute('data-id');
+        const src = card.getAttribute('data-source');
+        const art = artifacts.find(function (a) { return a.id === id; });
+        handleSelectArtifact(id, src, art);
+      }
+      card.addEventListener('click', select);
+      card.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); } });
+    });
+  }
+
+  function renderError(msg) {
+    const area = document.getElementById('results-area');
+    area.innerHTML = '<div class="state-msg"><div class="state-icon">⚠️</div><h3>Unable to load artifacts</h3><p>' + escapeHtml(msg) + '</p></div>';
+  }
+
+  // ── Rendering: Inspect ─────────────────────────────────────────────────────
+  function renderInspectPanel(artifact) {
+    const imgWrap = document.getElementById('inspect-img-wrap');
+    const placeholder = document.getElementById('inspect-placeholder');
+    const imgUrl = artifact.imageUrl || artifact.thumbnailUrl;
+
+    if (imgUrl) {
+      // Remove old img if any
+      const oldImg = document.getElementById('inspect-img');
+      if (oldImg) oldImg.remove();
+      if (placeholder) placeholder.style.display = 'none';
+      const img = document.createElement('img');
+      img.id = 'inspect-img';
+      img.src = imgUrl;
+      img.alt = artifact.title || 'Artifact';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      imgWrap.insertBefore(img, imgWrap.firstChild);
+    } else {
+      if (placeholder) placeholder.style.display = '';
+    }
+
+    // Source pill
+    const pill = document.getElementById('inspect-source-pill');
+    if (pill) pill.textContent = artifact.source === 'loc' ? '📚 Library of Congress' : '🏛️ Smithsonian';
+
+    // Title
+    document.getElementById('inspect-title').textContent = artifact.title || 'Untitled Artifact';
+
+    // Meta table
+    const metaTable = document.getElementById('inspect-meta-table');
+    metaTable.innerHTML = '';
+    const fields = [
+      ['Date', artifact.date],
+      ['Medium', artifact.medium],
+      ['Dimensions', artifact.dimensions],
+      ['Provenance', artifact.provenance],
+      ['Source', artifact.source === 'loc' ? 'Library of Congress' : 'Smithsonian Institution'],
+    ];
+    fields.forEach(function (pair) {
+      if (!pair[1]) return;
+      metaTable.innerHTML += '<span class="meta-label">' + escapeHtml(pair[0]) + '</span>' +
+        '<span class="meta-value">' + escapeHtml(pair[1]) + '</span>';
+    });
+
+    // Description
+    document.getElementById('inspect-desc').textContent = artifact.description || 'No description available for this artifact.';
+  }
+
+  function updateInvestigateHeader(artifact) {
+    document.getElementById('inv-artifact-name').textContent = artifact.title || 'Untitled';
+    document.getElementById('inv-artifact-date').textContent = artifact.date || '';
+    const thumb = document.getElementById('inv-thumb');
+    const imgUrl = artifact.thumbnailUrl || artifact.imageUrl;
+    if (imgUrl) {
+      thumb.src = imgUrl;
+      thumb.style.display = '';
+    } else {
+      thumb.style.display = 'none';
+    }
+  }
+
+  // ── Rendering: Conclude ────────────────────────────────────────────────────
+  function renderConcludePanel() {
+    const art = state.selectedArtifact;
+    const inv = state.investigation;
+
+    document.getElementById('conclude-artifact-title').textContent = art ? (art.title || 'Untitled') : 'Investigation';
+    document.getElementById('conclude-artifact-date').textContent = art ? (art.date || '') : '';
+
+    // Summary cards
+    const summaryGrid = document.getElementById('summary-grid');
+    summaryGrid.innerHTML = '';
+    const summaryFields = [
+      { label: '👁️ Observations', value: inv.observations },
+      { label: '🔍 Evidence', value: inv.evidence },
+      { label: '💡 Interpretation', value: inv.interpretation },
+      { label: '🧪 Hypothesis', value: inv.hypothesis },
+    ];
+    summaryFields.forEach(function (f) {
+      if (!f.value) return;
+      summaryGrid.innerHTML += '<div class="summary-card">' +
+        '<div class="summary-card-label">' + escapeHtml(f.label) + '</div>' +
+        '<div class="summary-card-text">' + escapeHtml(f.value) + '</div>' +
+        '</div>';
+    });
+  }
+
+  function renderScoreSection(score) {
+    document.getElementById('scoring-pending').style.display = 'none';
+    document.getElementById('score-section').style.display = '';
+
+    // Ring
+    const overall = typeof score.overall === 'number' ? score.overall : 0;
+    const pct = Math.round(overall * 100);
+    document.getElementById('score-ring-num').textContent = pct + '%';
+    const circumference = 2 * Math.PI * 42;
+    const offset = circumference * (1 - overall);
+    const fill = document.getElementById('score-ring-fill');
+    fill.style.strokeDasharray = String(circumference);
+    setTimeout(function () { fill.style.strokeDashoffset = String(offset); }, 100);
+
+    // Color the ring based on score
+    if (overall >= 0.8) fill.style.stroke = 'var(--green)';
+    else if (overall >= 0.6) fill.style.stroke = 'var(--gold)';
+    else fill.style.stroke = 'var(--red)';
+
+    // Rubric grid
+    const rubricGrid = document.getElementById('rubric-grid');
+    rubricGrid.innerHTML = '';
+    const rubricFields = [
+      { key: 'observation', label: 'Observation' },
+      { key: 'evidence', label: 'Evidence' },
+      { key: 'reasoning', label: 'Reasoning' },
+      { key: 'depth', label: 'Depth' },
+    ];
+    rubricFields.forEach(function (f) {
+      const val = typeof score[f.key] === 'number' ? score[f.key] : 0;
+      const pctVal = Math.round(val * 100);
+      rubricGrid.innerHTML += '<div class="rubric-card">' +
+        '<div class="rubric-card-label">' + escapeHtml(f.label) + '</div>' +
+        '<div class="rubric-bar-wrap"><div class="rubric-bar" style="width:' + pctVal + '%"></div></div>' +
+        '<div class="rubric-score-num">' + pctVal + '%</div>' +
+        '</div>';
+    });
+
+    // Feedback
+    if (score.feedback) {
+      document.getElementById('feedback-text').textContent = score.feedback;
+      document.getElementById('feedback-card').style.display = '';
+    }
+  }
+
+  // ── Selection flow ─────────────────────────────────────────────────────────
+  async function handleSelectArtifact(id, source, knownData) {
+    try {
+      let detail = knownData || null;
+      try {
+        const full = await apiGetArtifactDetail(id, source || 'smithsonian');
+        if (full && full.title !== 'Unavailable') detail = full;
+      } catch (_) { /* use knownData */ }
+
+      if (!detail) {
+        renderError('Unable to load artifact details. Please try another.');
+        return;
+      }
+
+      state.selectedArtifact = detail;
+      renderInspectPanel(detail);
+      updateInvestigateHeader(detail);
+      setPhase('inspect');
+      sendStateUpdateDebounced();
+    } catch (err) {
+      renderError('Unable to reach artifact database. Please try again.');
+    }
+  }
+
+  // ── Investigation fields ───────────────────────────────────────────────────
+  const FIELD_DEFS = [
+    { id: 'field-observations', countId: 'count-observations', checkId: 'check-observations', key: 'observations' },
+    { id: 'field-evidence',     countId: 'count-evidence',     checkId: 'check-evidence',     key: 'evidence' },
+    { id: 'field-interpretation', countId: 'count-interpretation', checkId: 'check-interpretation', key: 'interpretation' },
+    { id: 'field-hypothesis',   countId: 'count-hypothesis',   checkId: 'check-hypothesis',   key: 'hypothesis' },
+  ];
+
+  function updateCharCounts() {
+    let validCount = 0;
+    FIELD_DEFS.forEach(function (f) {
+      const el = document.getElementById(f.id);
+      const counter = document.getElementById(f.countId);
+      const check = document.getElementById(f.checkId);
+      if (!el || !counter) return;
+      const len = el.value.length;
+      const valid = len >= MIN_CHARS;
+      if (valid) validCount++;
+
+      counter.textContent = len + ' / ' + MIN_CHARS + ' min';
+      counter.className = 'char-count' + (valid ? ' valid' : (len > 0 ? ' warn' : ''));
+
+      if (check) {
+        check.className = 'field-check' + (valid ? ' done' : '');
+        check.textContent = valid ? '✓' : '';
+      }
+    });
+
+    const allValid = validCount === FIELD_DEFS.length;
+    const submitBtn = document.getElementById('submit-investigation-btn');
+    submitBtn.disabled = !allValid;
+    submitBtn.setAttribute('aria-disabled', String(!allValid));
+
+    const hint = document.getElementById('inv-completion-hint');
+    if (allValid) {
+      hint.textContent = 'All fields complete — ready to submit!';
+      hint.style.color = 'var(--green)';
+    } else {
+      hint.textContent = validCount + ' of ' + FIELD_DEFS.length + ' fields complete';
+      hint.style.color = 'var(--muted)';
+    }
+
+    // Progress bar
+    const fill = document.getElementById('inv-progress-fill');
+    if (fill) fill.style.width = Math.round((validCount / FIELD_DEFS.length) * 100) + '%';
+  }
+
+  function bindInvestigateFields() {
+    FIELD_DEFS.forEach(function (f) {
+      const el = document.getElementById(f.id);
+      if (!el) return;
+      el.addEventListener('input', function () {
+        state.investigation[f.key] = el.value;
+        updateCharCounts();
+        sendStateUpdateDebounced();
+      });
+    });
+  }
+
+  // ── Dialog ─────────────────────────────────────────────────────────────────
+  function openDialog() {
+    const overlay = document.getElementById('dialog-overlay');
+    overlay.classList.add('open');
+    document.getElementById('dialog-confirm-btn').focus();
+  }
+
+  function closeDialog() {
+    document.getElementById('dialog-overlay').classList.remove('open');
+  }
+
+  function handleFinalSubmit() {
+    state.investigation.submittedAt = new Date().toISOString();
+    state.completionStatus = 'INVESTIGATION_COMPLETE';
+    closeDialog();
+    announceToScreenReader('Investigation submitted successfully.');
+    renderConcludePanel();
+    setPhase('conclude');
+    sendStateUpdate();
+    triggerScoring();
+
+    const btn = document.getElementById('submit-final-btn');
+    btn.disabled = true;
+    btn.textContent = 'Submitted ✓';
+  }
+
+  // ── Accessibility ──────────────────────────────────────────────────────────
+  function announceToScreenReader(text) {
+    const live = document.getElementById('aria-live');
+    live.textContent = '';
+    void live.offsetHeight;
+    live.textContent = text;
+  }
+
+  // ── Loading overlay ────────────────────────────────────────────────────────
+  function hideLoadingOverlay() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      setTimeout(function () { overlay.style.display = 'none'; }, 500);
+    }
+  }
+
+  // ── Event bindings ─────────────────────────────────────────────────────────
   function bindEvents() {
-    // Search
+    // Search button
     document.getElementById('search-btn').addEventListener('click', async function () {
       const query = document.getElementById('search-input').value.trim();
       if (!query) return;
       state.searchQuery = query;
       renderLoading();
       try {
-        const data = await searchArtifacts(query);
-        searchResults = data.artifacts || [];
-        renderResults(searchResults);
+        const data = await apiSearchArtifacts(query, null, null, 0);
+        state.searchResults = data.artifacts || [];
+        renderResults(state.searchResults, data.source, data.totalCount);
+        sendStateUpdateDebounced();
       } catch (_) {
         renderError('Unable to reach artifact database. Please try again.');
       }
     });
 
+    // Search on Enter
     document.getElementById('search-input').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        document.getElementById('search-btn').click();
-      }
+      if (e.key === 'Enter') document.getElementById('search-btn').click();
+    });
+
+    // Quick search chips
+    document.querySelectorAll('.chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        const q = chip.getAttribute('data-query');
+        if (q) {
+          document.getElementById('search-input').value = q;
+          document.getElementById('search-btn').click();
+        }
+      });
     });
 
     // Inspect back
@@ -1413,10 +2162,11 @@
       setPhase('inspect');
     });
 
-    // Submit investigation
+    // Submit investigation (go to conclude preview)
     document.getElementById('submit-investigation-btn').addEventListener('click', function () {
       const inv = state.investigation;
-      if (inv.observations.length < MIN_CHARS || inv.evidence.length < MIN_CHARS || inv.claims.length < MIN_CHARS) return;
+      if (inv.observations.length < MIN_CHARS || inv.evidence.length < MIN_CHARS ||
+          inv.interpretation.length < MIN_CHARS || inv.hypothesis.length < MIN_CHARS) return;
       renderConcludePanel();
       setPhase('conclude');
     });
@@ -1424,6 +2174,25 @@
     // Submit final
     document.getElementById('submit-final-btn').addEventListener('click', function () {
       openDialog();
+    });
+
+    // New investigation
+    document.getElementById('new-investigation-btn').addEventListener('click', function () {
+      state.selectedArtifact = null;
+      state.investigation = {
+        observations: '', evidence: '', interpretation: '', hypothesis: '',
+        evidenceTags: [], submittedAt: null, stepTimestamps: {},
+      };
+      state.completionStatus = 'in_progress';
+      state.score = null;
+      state.llmFeedback = null;
+      document.getElementById('field-observations').value = '';
+      document.getElementById('field-evidence').value = '';
+      document.getElementById('field-interpretation').value = '';
+      document.getElementById('field-hypothesis').value = '';
+      updateCharCounts();
+      setPhase('discover');
+      sendStateUpdate();
     });
 
     // Dialog cancel
@@ -1438,38 +2207,38 @@
     });
 
     // Close dialog on overlay click
-    document.getElementById('confirm-dialog-overlay').addEventListener('click', function (e) {
+    document.getElementById('dialog-overlay').addEventListener('click', function (e) {
       if (e.target === this) closeDialog();
     });
 
     // Close dialog on Escape
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
-        const overlay = document.getElementById('confirm-dialog-overlay');
+        const overlay = document.getElementById('dialog-overlay');
         if (overlay.classList.contains('open')) closeDialog();
       }
     });
 
-    // Investigate fields
+    // Investigation fields
     bindInvestigateFields();
   }
 
-  // ──────────────────────────────────────────────
-  // Bootstrap
-  // ──────────────────────────────────────────────
+  // ── Bootstrap ──────────────────────────────────────────────────────────────
   function init() {
     bindEvents();
     updateCharCounts();
 
-    // If not in iframe (dev/standalone mode), auto-init
+    // Standalone dev mode (not in iframe)
     if (window.parent === window) {
       sessionId = 'dev-session';
       pluginId = 'artifact-studio';
       parentOrigin = window.location.origin;
+      conversationId = null;
       initialized = true;
       setPhase('discover');
+      hideLoadingOverlay();
     }
-    // Otherwise wait for INIT message from parent
+    // Otherwise wait for INIT from parent
   }
 
   document.addEventListener('DOMContentLoaded', init);

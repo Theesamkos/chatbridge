@@ -220,7 +220,27 @@ const plugins: InsertPluginSchema[] = [
       {
         name: "submit_investigation",
         description:
-          "Submit the student's completed artifact investigation for tutor review. Call this when the student indicates they are finished annotating and ready to submit their reasoning chain. The app validates internally that the required fields are present — no arguments are required from the LLM.",
+          "Submit the student's completed artifact investigation for tutor review. Call this when the student indicates they are finished annotating and ready to submit their reasoning chain. The app validates internally that all four fields (observations, evidence, interpretation, hypothesis) have at least 50 characters. No arguments required.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: "reset_investigation",
+        description:
+          "Reset the current investigation, clearing all four reasoning fields (observations, evidence, interpretation, hypothesis) so the student can start fresh. If an artifact is already selected, the student returns to the Investigate phase with the same artifact. If no artifact is selected, they return to Discover. Call this when the student wants to try again or start over.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: "get_investigation_state",
+        description:
+          "Get the full current state of the Artifact Investigation Studio: which phase the student is on (discover/inspect/investigate/conclude), which artifact is selected, and the current content of all four reasoning fields. Call this before giving coaching advice so you have accurate context about where the student is in their investigation.",
         parameters: {
           type: "object",
           properties: {},

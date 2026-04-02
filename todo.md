@@ -126,3 +126,20 @@
 - [x] 9 new timeline tests in contextAssembly.test.ts
 - [x] Full test suite: 111/111 passing (up from 102)
 - [x] Seed applied to database: timeline plugin updated with 4 tools
+
+## Phase 5: Artifact Investigation Studio (COMPLETED)
+
+- [x] Rebuilt artifact-studio iframe: flagship dark UI, 4-step workflow (Discover → Inspect → Investigate → Conclude)
+- [x] Premium animated step progress bar, immersive artifact image presentation, structured reasoning fields
+- [x] All 5 tools implemented: search_artifacts, get_artifact_detail, submit_investigation, reset_investigation, get_investigation_state
+- [x] Structured state model: phase, selectedArtifact, investigation (observations/evidence/interpretation/hypothesis/evidenceTags/stepTimestamps)
+- [x] Deterministic client-side validation: each reasoning field must be ≥50 characters before submission
+- [x] Full plugin lifecycle: INIT → PLUGIN_READY → STATE_UPDATE → PLUGIN_COMPLETE
+- [x] State restoration on INIT (phase, selectedArtifact, investigation fields)
+- [x] Smithsonian API proxy already hardened: primary + LoC fallback, 24h cache, K-12 filter (no changes needed)
+- [x] seed.ts updated: artifact-studio now has all 5 tool schemas with rich descriptions (reset_investigation + get_investigation_state added)
+- [x] Seed applied to database: artifact-studio plugin updated with 5 tools
+- [x] contextAssembly.ts: artifact-studio system prompt injected (4-step workflow, Socratic coaching, 9 mandatory behavior rules)
+- [x] contextAssembly.ts: completion coaching for excellent (≥80%), partial (60-79%), low (<60%) scores + pending-score state
+- [x] 11 new artifact-studio tests in contextAssembly.test.ts (context assembly + sanitizePluginState injection protection)
+- [x] Full test suite: 122/122 passing (up from 111)

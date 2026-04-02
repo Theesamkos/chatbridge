@@ -146,6 +146,33 @@ export async function assembleContext(
       "7. Keep explanations concise and age-appropriate for K-12 students.";
   }
 
+  // Artifact Investigation Studio: inject guided reasoning instructions
+  if (activePluginId === "artifact-studio") {
+    systemMessage +=
+      "\n\n## ARTIFACT INVESTIGATION STUDIO — YOU ARE THE INQUIRY GUIDE\n" +
+      "The student is conducting a structured historical inquiry using real artifacts from the Smithsonian and Library of Congress.\n\n" +
+      "THE FOUR-STEP WORKFLOW:\n" +
+      "  Step 1 — DISCOVER: Student searches for artifacts. You call search_artifacts with relevant terms.\n" +
+      "  Step 2 — INSPECT: Student examines a specific artifact. You call get_artifact_detail to load it.\n" +
+      "  Step 3 — INVESTIGATE: Student fills in 4 reasoning fields (observations, evidence, interpretation, hypothesis). Each must be ≥50 chars.\n" +
+      "  Step 4 — CONCLUDE: Student submits. You call submit_investigation to finalize and trigger LLM scoring.\n\n" +
+      "MANDATORY BEHAVIOR:\n" +
+      "1. SEARCHING: When the student wants to explore a topic or find artifacts, call search_artifacts immediately with descriptive terms.\n" +
+      "   Good queries: 'Civil War rifle infantry', 'ancient Roman pottery cooking', 'Apollo 11 mission equipment'.\n" +
+      "2. LOADING ARTIFACTS: When the student selects or wants to examine a specific artifact, call get_artifact_detail with its id and source.\n" +
+      "3. COACHING DURING INVESTIGATION: Ask Socratic questions to help the student think deeper:\n" +
+      "   - Observations: 'What materials do you see? What condition is it in? Are there any markings or symbols?'\n" +
+      "   - Evidence: 'Which specific detail you observed tells you the most about when or where this was made?'\n" +
+      "   - Interpretation: 'Who do you think used this? What does the wear pattern tell you about how it was used?'\n" +
+      "   - Hypothesis: 'Based on everything, what is your best conclusion? What questions remain unanswered?'\n" +
+      "4. SUBMITTING: When the student says they are done or ready to submit, call submit_investigation. The app validates all fields are complete.\n" +
+      "5. RESETTING: If the student wants to start over or try a different artifact, call reset_investigation.\n" +
+      "6. CHECKING STATE: Call get_investigation_state before giving coaching advice to see exactly where the student is.\n" +
+      "7. NEVER invent artifact details — only discuss what the API returns.\n" +
+      "8. NEVER evaluate whether the student's historical conclusion is factually correct — evaluate the QUALITY of their reasoning process.\n" +
+      "9. Keep all language age-appropriate for K-12 students. Be encouraging and curious.";
+  }
+
   if (activePluginId && pluginState !== null) {
     const pluginSchema = await getPluginSchema(activePluginId);
     const pluginName = pluginSchema?.name ?? activePluginId;
@@ -185,6 +212,44 @@ export async function assembleContext(
             "Give specific, encouraging feedback about which events were in the wrong position and why the correct chronological order matters historically. " +
             "Offer to reset for another attempt if they scored below 80%.";
         }
+      }
+    }
+
+    // Artifact Investigation Studio: completion coaching
+    if (
+      activePluginId === "artifact-studio" &&
+      (pluginState as Record<string, unknown>).completionStatus === "INVESTIGATION_COMPLETE"
+    ) {
+      const ps = pluginState as Record<string, unknown>;
+      const artifactTitle = (ps.selectedArtifact as Record<string, unknown>)?.title as string | null;
+      const scoreData = ps.score as Record<string, unknown> | null;
+      if (scoreData && typeof scoreData.overall === "number") {
+        const overallPct = Math.round(scoreData.overall * 100);
+        const feedback = typeof scoreData.feedback === "string" ? scoreData.feedback : null;
+        if (overallPct >= 80) {
+          systemMessage +=
+            `\n\nThe student just completed their investigation of "${artifactTitle ?? "the artifact"}" with an excellent score of ${overallPct}%. ` +
+            "Celebrate their strong historical reasoning. " +
+            (feedback ? `The scoring feedback was: "${feedback}" ` : "") +
+            "Highlight what they did especially well and suggest a follow-up question to deepen their inquiry.";
+        } else if (overallPct >= 60) {
+          systemMessage +=
+            `\n\nThe student completed their investigation of "${artifactTitle ?? "the artifact"}" with a score of ${overallPct}%. ` +
+            "Give encouraging, specific feedback on how to strengthen their reasoning. " +
+            (feedback ? `The scoring feedback was: "${feedback}" ` : "") +
+            "Suggest which of the four fields (observations, evidence, interpretation, hypothesis) needs the most improvement.";
+        } else {
+          systemMessage +=
+            `\n\nThe student completed their investigation of "${artifactTitle ?? "the artifact"}" with a score of ${overallPct}%. ` +
+            "Be encouraging and constructive. " +
+            (feedback ? `The scoring feedback was: "${feedback}" ` : "") +
+            "Explain what strong historical reasoning looks like and offer to reset so they can try again with better observations and evidence.";
+        }
+      } else {
+        // Submitted but not yet scored
+        systemMessage +=
+          `\n\nThe student has submitted their investigation of "${artifactTitle ?? "the artifact"}". ` +
+          "Acknowledge their completion and encourage them to reflect on their reasoning process while the score is being calculated.";
       }
     }
   }
