@@ -33,10 +33,10 @@ const PLUGIN_ICONS: Record<string, string> = {
 };
 
 const PLUGIN_COLORS: Record<string, string> = {
-  chess: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30",
-  timeline: "from-blue-500/20 to-blue-600/10 border-blue-500/30",
-  "artifact-studio": "from-amber-500/20 to-amber-600/10 border-amber-500/30",
-  "mock-plugin": "from-purple-500/20 to-purple-600/10 border-purple-500/30",
+  chess: "from-amber-500/20 to-orange-600/10 border-amber-500/30",
+  timeline: "from-orange-500/20 to-amber-600/10 border-orange-500/30",
+  "artifact-studio": "from-yellow-500/20 to-amber-600/10 border-yellow-500/30",
+  "mock-plugin": "from-amber-700/20 to-orange-700/10 border-amber-700/30",
 };
 
 export default function PluginPicker({

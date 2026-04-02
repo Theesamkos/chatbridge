@@ -63,8 +63,8 @@ function StatusPill({ state }: { state: PluginLifecycleState }) {
     },
     ready: {
       label: "Ready",
-      className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-      icon: <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />,
+      className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+      icon: <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />,
     },
     active: {
       label: "Active",
@@ -73,7 +73,7 @@ function StatusPill({ state }: { state: PluginLifecycleState }) {
     },
     complete: {
       label: "Complete",
-      className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+      className: "bg-amber-500/10 text-amber-700 border-amber-500/20",
       icon: <CheckCircle2 className="h-2.5 w-2.5" />,
     },
     error: {

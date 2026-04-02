@@ -152,3 +152,10 @@
 - [x] DashboardLayout: brand mark in sidebar header, refined active menu items, better mobile bottom tab bar
 - [x] Teacher Dashboard: elevated stat cards with color/trend indicators, quick-action row, refined activity feed with severity badges
 - [x] All 122 tests passing (UI changes are frontend-only, no backend test impact)
+
+## Color Palette: Warm Amber/Gold Theme
+
+- [ ] Update index.css: shift all OKLCH primary/secondary/accent tokens to warm amber/gold
+- [ ] Update index.css: shift background/card/sidebar tokens to warm deep charcoal
+- [ ] Update plugin iframes: chess, timeline, artifact-studio warm color accents
+- [ ] Verify 0 TS errors and all 122 tests pass

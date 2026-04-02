@@ -64,14 +64,14 @@ export default function PluginStats() {
                       contentStyle={{ fontSize: 12, borderRadius: 6 }}
                       cursor={{ fill: "hsl(var(--muted))" }}
                     />
-                    <Bar dataKey="Activations" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="Completions" fill="#22c55e" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="Activations" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="Completions" fill="#fb923c" radius={[3, 3, 0, 0]} />
                     <Bar dataKey="Failures"    fill="#ef4444" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="flex items-center gap-4 justify-center mt-2 text-xs text-muted-foreground">
-                  <LegendDot color="#3b82f6" label="Activations" />
-                  <LegendDot color="#22c55e" label="Completions" />
+                  <LegendDot color="#f59e0b" label="Activations" />
+                  <LegendDot color="#fb923c" label="Completions" />
                   <LegendDot color="#ef4444" label="Failures" />
                 </div>
               </CardContent>
@@ -84,8 +84,8 @@ export default function PluginStats() {
                   <CardContent className="pt-5 pb-4 px-4 space-y-3">
                     <p className="font-medium truncate">{s.pluginName}</p>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <Stat label="Activations" value={s.activationCount} color="text-blue-500" />
-                      <Stat label="Completions" value={s.completionCount} color="text-green-500" />
+                      <Stat label="Activations" value={s.activationCount} color="text-amber-500" />
+                      <Stat label="Completions" value={s.completionCount} color="text-orange-500" />
                       <Stat label="Failures"    value={s.failureCount}    color="text-red-500" />
                     </div>
                     <div className="text-xs text-muted-foreground text-center">
