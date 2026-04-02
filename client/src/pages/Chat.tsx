@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { Loader2, MessageSquarePlus, Sparkles, User } from "lucide-react";
+import { LayoutDashboard, Loader2, MessageSquarePlus, Sparkles, User } from "lucide-react";
+import { useLocation } from "wouter";
 import {
   Suspense,
   startTransition,
@@ -31,7 +32,8 @@ interface ChatMessage {
 
 export default function Chat() {
   // Rule: redirect if not authenticated
-  useAuth({ redirectOnUnauthenticated: true });
+  const { user } = useAuth({ redirectOnUnauthenticated: true });
+  const [, setLocation] = useLocation();
 
   const utils = trpc.useUtils();
   const [, startHistoryTransition] = useTransition(); // Rule 24
@@ -239,6 +241,19 @@ export default function Chat() {
             </ul>
           )}
         </ScrollArea>
+
+        {/* Teacher dashboard link — visible to teacher and admin roles */}
+        {(user?.role === "teacher" || user?.role === "admin") && (
+          <div className="border-t p-3">
+            <button
+              onClick={() => setLocation("/teacher")}
+              className="flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors min-h-[44px]"
+            >
+              <LayoutDashboard className="size-4 shrink-0" />
+              <span>Teacher Dashboard</span>
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* ── Main area ───────────────────────────────────────────────────── */}

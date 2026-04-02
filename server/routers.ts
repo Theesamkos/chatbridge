@@ -7,6 +7,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { artifactsRouter } from "./routers/artifacts";
 import { pluginsRouter } from "./routers/plugins";
+import { teacherRouter } from "./routers/teacher";
 import {
   archiveConversation,
   createConversation,
@@ -74,6 +75,7 @@ export const appRouter = router({
   conversations: conversationsRouter,
   plugins: pluginsRouter,
   artifacts: artifactsRouter,
+  teacher: teacherRouter,
 });
 
 export type AppRouter = typeof appRouter;
