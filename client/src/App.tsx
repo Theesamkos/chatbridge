@@ -13,6 +13,35 @@ import StudentSessions from "./pages/teacher/StudentSessions";
 import ConversationLog from "./pages/teacher/ConversationLog";
 import SafetyEvents from "./pages/teacher/SafetyEvents";
 import PluginStats from "./pages/teacher/PluginStats";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import PluginManagement from "./pages/admin/PluginManagement";
+import AuditLogViewer from "./pages/admin/AuditLogViewer";
+import UserManagement from "./pages/admin/UserManagement";
+import CostDashboard from "./pages/admin/CostDashboard";
+import PluginFailures from "./pages/admin/PluginFailures";
+
+// ─── Admin route guard ────────────────────────────────────────────────────────
+
+/**
+ * Wraps an admin-only page. Non-admins are redirected to /404.
+ */
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (loading) return null;
+
+  if (!user) {
+    return null;
+  }
+
+  if (user.role !== "admin") {
+    setLocation("/404");
+    return null;
+  }
+
+  return <Component />;
+}
 
 // ─── Teacher route guard ──────────────────────────────────────────────────────
 
@@ -64,6 +93,26 @@ function Router() {
       </Route>
       <Route path={"/teacher/plugins"}>
         {() => <TeacherRoute component={PluginStats} />}
+      </Route>
+
+      {/* Admin routes — role: admin only */}
+      <Route path={"/admin"}>
+        {() => <AdminRoute component={AdminDashboard} />}
+      </Route>
+      <Route path={"/admin/plugins"}>
+        {() => <AdminRoute component={PluginManagement} />}
+      </Route>
+      <Route path={"/admin/audit"}>
+        {() => <AdminRoute component={AuditLogViewer} />}
+      </Route>
+      <Route path={"/admin/users"}>
+        {() => <AdminRoute component={UserManagement} />}
+      </Route>
+      <Route path={"/admin/costs"}>
+        {() => <AdminRoute component={CostDashboard} />}
+      </Route>
+      <Route path={"/admin/failures"}>
+        {() => <AdminRoute component={PluginFailures} />}
       </Route>
 
       <Route path={"/404"} component={NotFound} />

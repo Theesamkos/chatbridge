@@ -187,6 +187,8 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
   let toolCallCount = 0;
   let assistantMessageId = nanoid();
   const toolNames: string[] = [];
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
 
   try {
     // When tools are available, use non-streaming invokeLLM so we can inspect
@@ -202,6 +204,13 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
         fullResponse += token;
         writeEvent({ type: "token", content: token });
       }
+      // Estimate token usage for the streaming path (no exact counts available)
+      const inputChars = llmMessages.reduce((sum, m) => {
+        const c = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+        return sum + c.length;
+      }, 0);
+      totalInputTokens  = Math.ceil(inputChars / 4);
+      totalOutputTokens = Math.ceil(fullResponse.length / 4);
     } else {
       // Tool-capable loop
       while (true) {
@@ -211,6 +220,11 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
           messages: llmMessages,
           tools: context.tools as never,
         });
+        // Accumulate token usage from each invokeLLM call
+        if (result.usage) {
+          totalInputTokens  += result.usage.prompt_tokens     ?? 0;
+          totalOutputTokens += result.usage.completion_tokens ?? 0;
+        }
 
         const choice = result.choices[0];
         if (!choice) break;
@@ -423,7 +437,23 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
     console.error("[stream] Failed to persist assistant message:", err);
   }
 
-  // ── 9. Audit log (Rule 28: log event types only, never raw content) ─────────
+  // ── 9a. Token-usage audit log (for cost metrics — Rule 28) ─────────────────
+  writeAuditLog({
+    eventType: "llm_request_complete",
+    userId: user.id,
+    conversationId,
+    pluginId: context.pluginId ?? undefined,
+    payload: {
+      inputTokens:  totalInputTokens,
+      outputTokens: totalOutputTokens,
+      model:        "claude-sonnet-4-5",
+      pluginId:     context.pluginId ?? null,
+      conversationId,
+    },
+    severity: "info",
+  }).catch(err => console.error("[AuditLog]", err));
+
+  // ── 9b. Audit log (Rule 28: log event types only, never raw content) ────────
   writeAuditLog({
     eventType: modResult.action === "block" ? "OUTPUT_FLAGGED" : "LLM_RESPONSE_COMPLETE",
     userId: user.id,

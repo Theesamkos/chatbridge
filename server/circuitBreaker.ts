@@ -82,6 +82,24 @@ export class CircuitBreaker {
   reset(pluginId: string, conversationId: string): void {
     this.counters.delete(this.key(pluginId, conversationId));
   }
+
+  /** Returns true if ANY conversation has an open breaker for this plugin. */
+  hasActiveBreaker(pluginId: string): boolean {
+    const prefix = `${pluginId}:`;
+    for (const [key, entry] of Array.from(this.counters.entries())) {
+      if (!key.startsWith(prefix)) continue;
+      if (entry.active && Date.now() < entry.resetAt) return true;
+    }
+    return false;
+  }
+
+  /** Clear all open breakers for a plugin (used when a plugin is suspended). */
+  resetAllForPlugin(pluginId: string): void {
+    const prefix = `${pluginId}:`;
+    for (const key of Array.from(this.counters.keys())) {
+      if (key.startsWith(prefix)) this.counters.delete(key);
+    }
+  }
 }
 
 export const circuitBreaker = new CircuitBreaker();

@@ -4,10 +4,11 @@
  */
 import DashboardLayout, { type MenuItem } from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/lib/trpc";
-import { BarChart2, BookOpen, LayoutDashboard, Loader2, Shield, Users } from "lucide-react";
+import { BarChart2, BookOpen, LayoutDashboard, Loader2, Settings, Shield, Users } from "lucide-react";
 import { useLocation } from "wouter";
 
 // ─── Shared teacher nav ───────────────────────────────────────────────────────
@@ -24,6 +25,8 @@ export const teacherMenuItems: MenuItem[] = [
 export default function TeacherDashboard() {
   const [, setLocation] = useLocation();
 
+  const { data: me } = trpc.auth.me.useQuery();
+
   const { data: summary, isLoading: summaryLoading } =
     trpc.teacher.getClassSummary.useQuery();
 
@@ -33,11 +36,24 @@ export default function TeacherDashboard() {
   return (
     <DashboardLayout menuItems={teacherMenuItems}>
       <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Teacher Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Overview of class activity and safety events.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Teacher Dashboard</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Overview of class activity and safety events.
+            </p>
+          </div>
+          {me?.role === "admin" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation("/admin")}
+              className="min-h-[44px] gap-2 border-slate-300 text-slate-700 hover:bg-slate-100 shrink-0"
+            >
+              <Settings className="h-4 w-4" />
+              Admin Panel
+            </Button>
+          )}
         </div>
 
         {/* Summary cards */}

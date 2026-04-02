@@ -8,6 +8,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { artifactsRouter } from "./routers/artifacts";
 import { pluginsRouter } from "./routers/plugins";
 import { teacherRouter } from "./routers/teacher";
+import { adminRouter } from "./routers/admin";
 import {
   archiveConversation,
   createConversation,
@@ -76,6 +77,7 @@ export const appRouter = router({
   plugins: pluginsRouter,
   artifacts: artifactsRouter,
   teacher: teacherRouter,
+  admin:   adminRouter,
 });
 
 export type AppRouter = typeof appRouter;
