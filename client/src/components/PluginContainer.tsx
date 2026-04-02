@@ -127,6 +127,17 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
     const bridgeRef = useRef<PluginBridge | null>(null);
     // Use a ref to track loading state for the timeout callback (avoids stale closure)
     const isLoadingRef = useRef(true);
+    // Track whether the plugin iframe has fired PLUGIN_READY
+    const pluginReadyRef = useRef(false);
+    // Queue of tool invocations that arrived before PLUGIN_READY
+    type PendingTool = {
+      toolCallId: string;
+      toolName: string;
+      args: Record<string, unknown>;
+      resolve: (value: unknown) => void;
+      reject: (reason: unknown) => void;
+    };
+    const pendingToolsRef = useRef<PendingTool[]>([]);
 
     const [lifecycleState, setLifecycleState] = useState<ExtendedLifecycleState>("loading");
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -135,25 +146,33 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
 
     const updateStateMutation = trpc.plugins.updateState.useMutation();
 
+    // Helper: dispatch a tool invocation through the bridge with error handling
+    const dispatchTool = (bridge: PluginBridge, toolCallId: string, toolName: string, args: Record<string, unknown>) => {
+      setLifecycleState(prev => (prev === "ready" || prev === "active") ? "active" : prev);
+      return bridge.sendToolInvoke(toolCallId, toolName, args).catch((err: Error) => {
+        const msg = err.message ?? "";
+        if (msg.includes("circuit") || msg.includes("breaker")) {
+          setLifecycleState("circuit_open");
+          setErrorMessage("Too many errors detected. This plugin has been temporarily paused for safety.");
+        } else if (msg.includes("frozen") || msg.includes("Conversation is frozen")) {
+          setLifecycleState("frozen");
+          setErrorMessage("This session has been frozen by a safety check. Please contact your teacher.");
+        }
+        throw err;
+      });
+    };
+
     // Expose sendToolInvoke to parent via ref
     useImperativeHandle(ref, () => ({
       sendToolInvoke(toolCallId, toolName, args) {
         const bridge = bridgeRef.current;
-        if (!bridge) return Promise.reject(new Error("PluginBridge not ready"));
-        // Transition to active state when a tool is invoked
-        setLifecycleState(prev => (prev === "ready" || prev === "active") ? "active" : prev);
-        return bridge.sendToolInvoke(toolCallId, toolName, args).catch((err: Error) => {
-          // If the server returns a 429 (circuit breaker) or 403 (frozen), surface it
-          const msg = err.message ?? "";
-          if (msg.includes("circuit") || msg.includes("breaker")) {
-            setLifecycleState("circuit_open");
-            setErrorMessage("Too many errors detected. This plugin has been temporarily paused for safety.");
-          } else if (msg.includes("frozen") || msg.includes("Conversation is frozen")) {
-            setLifecycleState("frozen");
-            setErrorMessage("This session has been frozen by a safety check. Please contact your teacher.");
-          }
-          throw err;
-        });
+        // If the bridge isn't ready yet, queue the call and replay when PLUGIN_READY fires
+        if (!bridge || !pluginReadyRef.current) {
+          return new Promise<unknown>((resolve, reject) => {
+            pendingToolsRef.current.push({ toolCallId, toolName, args, resolve, reject });
+          });
+        }
+        return dispatchTool(bridge, toolCallId, toolName, args);
       },
     }));
 
@@ -185,7 +204,13 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
           onReady() {
             clearTimeout(readyTimeout);
             isLoadingRef.current = false;
+            pluginReadyRef.current = true;
             if (!destroyed) setLifecycleState("ready");
+            // Replay any tool invocations that arrived before PLUGIN_READY
+            const pending = pendingToolsRef.current.splice(0);
+            for (const { toolCallId, toolName, args, resolve, reject } of pending) {
+              dispatchTool(bridge, toolCallId, toolName, args).then(resolve).catch(reject);
+            }
           },
           onStateUpdate(state, _partial) {
             // Transition to active on first state update
@@ -249,6 +274,12 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
         iframe.removeEventListener("load", handleLoad);
         bridge.destroy();
         bridgeRef.current = null;
+        pluginReadyRef.current = false;
+        // Reject any still-pending tool calls on cleanup
+        const pending = pendingToolsRef.current.splice(0);
+        for (const { reject } of pending) {
+          reject(new Error("Plugin container unmounted before PLUGIN_READY"));
+        }
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pluginId, conversationId, sessionId, schema.origin, retryKey]);

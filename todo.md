@@ -182,6 +182,11 @@
 - [x] Final readiness report delivered
 
 ## Production Bug Fixes + Delete Chat Feature
-- [ ] Fix chess AI asking for clarification instead of calling make_move with the UCI string
-- [ ] Fix chess start_game error ("An error occurred. Please try again.")
-- [ ] Add delete conversation feature (backend + frontend with confirmation)
+- [x] Fix chess AI asking for clarification instead of calling make_move with the UCI string
+- [x] Fix chess start_game error ("An error occurred. Please try again.")
+- [x] Add delete conversation feature (backend + frontend with confirmation)
+
+## Chess Race Condition Fix (ACTIVE)
+- [x] Fix race condition: gate chat send until plugin iframe fires PLUGIN_READY
+- [x] Handle tool invocations queued before iframe is ready (retry/queue pattern)
+- [x] Verify chess start_game + make_move works end-to-end in production
