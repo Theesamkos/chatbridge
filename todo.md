@@ -190,3 +190,7 @@
 - [x] Fix race condition: gate chat send until plugin iframe fires PLUGIN_READY
 - [x] Handle tool invocations queued before iframe is ready (retry/queue pattern)
 - [x] Verify chess start_game + make_move works end-to-end in production
+
+## Chess Illegal Move + Empty Bubble Fixes
+- [x] Fix illegal move handling: AI must explain the illegal move and ask for a valid one (not go silent)
+- [x] Fix empty AI bubble: suppress blank/whitespace-only AI messages in the chat UI

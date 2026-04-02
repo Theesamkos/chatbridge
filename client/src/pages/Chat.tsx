@@ -751,6 +751,7 @@ export default function Chat() {
                 <div className="py-6 space-y-4">
                   {displayMessages
                     .filter(m => m.role !== "system")
+                    .filter(m => m.role === "user" || (m.content && m.content.trim().length > 0))
                     .map(msg => (
                       <MessageBubble key={msg.id} msg={msg} />
                     ))}

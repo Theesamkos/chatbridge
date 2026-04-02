@@ -537,8 +537,8 @@ function handleToolInvoke(msg) {
           result = chess.move(moveArg);
         }
         if (!result) {
-          sendToolResult(toolCallId, { moveResult:'illegal', error:`"${moveArg}" is not a legal move in this position.`,
-            fen:chess.fen(), turn:chess.turn()==='w'?'white':'black', legalMovesCount:chess.moves().length }, false); return;
+          sendToolResult(toolCallId, { moveResult:'illegal', error:`"${moveArg}" is not a legal move in this position. The piece may not be on that square, or the move violates chess rules (check, pinned piece, wrong turn, etc.). Call get_legal_moves to see all valid moves.`,
+            fen:chess.fen(), turn:chess.turn()==='w'?'white':'black', legalMovesCount:chess.moves().length }, true); return;
         }
         lastMoveSquares = [result.from, result.to]; selectedSquare = null; legalMovesForSelected = [];
         renderBoard(); updateInfo();
