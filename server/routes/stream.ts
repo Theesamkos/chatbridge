@@ -54,9 +54,10 @@ function validateToolArgs(
  *   { type: "error",       message: string }
  */
 export async function streamHandler(req: Request, res: Response): Promise<void> {
-  const { conversationId, message } = req.body as {
+  const { conversationId, message, autoPlay } = req.body as {
     conversationId?: string;
     message?: string;
+    autoPlay?: boolean;
   };
 
   // ── 1. Input validation (synchronous — done before flushing headers) ────────
@@ -111,16 +112,18 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  // ── 4. Persist the user message ─────────────────────────────────────────────
+  // ── 4. Persist the user message (skipped for auto-play AI moves) ────────────
 
   const userMessageId = nanoid();
-  await createMessage({
-    id: userMessageId,
-    conversationId,
-    role: "user",
-    content: message,
-    moderationStatus: "passed",
-  });
+  if (!autoPlay) {
+    await createMessage({
+      id: userMessageId,
+      conversationId,
+      role: "user",
+      content: message,
+      moderationStatus: "passed",
+    });
+  }
 
   // ── 5. Assemble context (Rule 15: never expose to client) ───────────────────
   //       Timed here so Server-Timing can be set before flushing SSE headers.

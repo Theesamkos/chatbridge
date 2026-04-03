@@ -224,3 +224,7 @@
 - [x] Update timeline iframe: fetchLiveTopicEvents() fetches from server, loadTopic uses live cache
 - [x] handleLoadTopic and load_timeline tool both try live first, fall back to curated
 - [x] 152/152 tests passing, 0 TS errors
+
+## Recommended Steps
+- [ ] Chess: auto-play Black after every White move (iframe sends REQUEST_AI_MOVE → server triggers AI make_move)
+- [ ] Artifact Studio: fix triggerScoring to use postMessage proxy instead of blocked direct fetch

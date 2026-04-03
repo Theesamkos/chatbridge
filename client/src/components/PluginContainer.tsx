@@ -53,6 +53,8 @@ interface PluginContainerProps {
   onComplete?: (finalState: unknown, summary: string) => void;
   /** Called when the plugin sends a fatal PLUGIN_ERROR. */
   onError?: (error: string) => void;
+  /** Called when chess plugin detects Black's turn after a manual White move — triggers AI auto-play. */
+  onRequestAiMove?: (lastMove: string) => void;
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────
@@ -120,7 +122,7 @@ function StatusPill({ state }: { state: ExtendedLifecycleState }) {
 
 const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
   function PluginContainer(
-    { conversationId, pluginId, sessionId, schema, restoredState, onComplete, onError },
+    { conversationId, pluginId, sessionId, schema, restoredState, onComplete, onError, onRequestAiMove },
     ref,
   ) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -215,6 +217,16 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
           onStateUpdate(state, _partial) {
             // Transition to active on first state update
             if (!destroyed) setLifecycleState(prev => prev === "ready" ? "active" : prev);
+            // Chess auto-play: when it's Black's turn after a manual White move, trigger AI
+            if (pluginId === "chess" && !destroyed && onRequestAiMove) {
+              const cs = state as Record<string, unknown>;
+              const turn = cs?.turn as string | undefined;
+              const history = cs?.history as string[] | undefined;
+              const lastMove = history && history.length > 0 ? history[history.length - 1] : null;
+              if (turn === "b" && lastMove) {
+                onRequestAiMove(lastMove);
+              }
+            }
             // Persist state update via tRPC
             startTransition(() => {
               updateStateMutation.mutate({

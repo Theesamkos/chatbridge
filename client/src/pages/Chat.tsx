@@ -614,6 +614,69 @@ export default function Chat() {
     }
   }, [activeConvId, isStreaming, inputValue, addOptimisticMessage, startHistoryTransition, utils, pluginSchema?.name]);
 
+  // Chess auto-play: silently trigger the AI to play Black after a manual White move
+  const triggerAiMove = useCallback(async (lastMove: string) => {
+    if (!activeConvId || isStreaming) return;
+    setIsStreaming(true);
+    setStreamingContent("");
+    setActiveToolName(null);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: activeConvId,
+          message: `White just played ${lastMove}. Now play your best response as Black using make_move.`,
+          autoPlay: true,
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) { setIsStreaming(false); return; }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+          const ev = JSON.parse(raw) as { type: string; content?: string; toolName?: string; toolCallId?: string; arguments?: Record<string, unknown>; messageId?: string };
+          if (ev.type === "token") {
+            setActiveToolName(null);
+            startTransition(() => setStreamingContent(prev => prev + (ev.content ?? "")));
+          } else if (ev.type === "tool_invoke" && ev.toolCallId && ev.arguments) {
+            setActiveToolName(pluginSchema?.name ?? ev.toolName ?? null);
+            const pc = pluginContainerRef.current;
+            if (pc) {
+              pc.sendToolInvoke(ev.toolCallId, ev.toolName ?? "", ev.arguments)
+                .then(result => fetch("/api/chat/tool-result", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toolCallId: ev.toolCallId, conversationId: activeConvId, result, isError: false }) }))
+                .catch(err => fetch("/api/chat/tool-result", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toolCallId: ev.toolCallId, conversationId: activeConvId, result: err instanceof Error ? err.message : "Tool failed", isError: true }) }));
+            }
+          } else if (ev.type === "complete") {
+            startHistoryTransition(() => utils.conversations.get.invalidate({ id: activeConvId }));
+            setStreamingContent("");
+            setIsStreaming(false);
+            setActiveToolName(null);
+          } else if (ev.type === "error") {
+            setIsStreaming(false);
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== "AbortError") console.error("[autoPlay]", err);
+      setIsStreaming(false);
+      setStreamingContent("");
+      setActiveToolName(null);
+    }
+  }, [activeConvId, isStreaming, pluginSchema?.name, startHistoryTransition, utils]);
+
   const handleNewChat = () => {
     createConv.mutate({ title: "New conversation" });
   };
@@ -900,6 +963,7 @@ export default function Chat() {
                         onError={error => {
                           toast.error(`Plugin error: ${error}`);
                         }}
+                        onRequestAiMove={triggerAiMove}
                       />
                     </Suspense>
                   </ErrorBoundary>
