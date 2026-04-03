@@ -1664,7 +1664,7 @@
   const pendingProxyRequests = new Map();
   let proxyRequestCounter = 0;
 
-  function proxyFetch(url) {
+  function proxyFetch(url, options) {
     return new Promise((resolve, reject) => {
       const requestId = 'proxy-' + (++proxyRequestCounter);
       const timeout = setTimeout(() => {
@@ -1679,7 +1679,9 @@
         pluginId,
         requestId,
         url,
-        method: 'GET',
+        method: options?.method || 'GET',
+        body: options?.body || null,
+        headers: options?.headers || null,
       }, '*');
     });
   }
@@ -1719,37 +1721,37 @@
   async function triggerScoring() {
     if (!conversationId) return;
     try {
-      const res = await fetch('/api/plugins/score-investigation', {
+      const payload = {
+        conversationId,
+        finalState: {
+          selectedArtifact: state.selectedArtifact,
+          inquiryQuestion: state.investigation.observations.slice(0, 200),
+          conclusion: state.investigation.hypothesis,
+          annotations: [
+            { type: 'evidence', content: state.investigation.evidence },
+            { type: 'interpretation', content: state.investigation.interpretation },
+          ],
+          observations: state.investigation.observations,
+          evidence: state.investigation.evidence,
+          interpretation: state.investigation.interpretation,
+          hypothesis: state.investigation.hypothesis,
+        },
+        summary: 'Investigation of "' + (state.selectedArtifact?.title || 'artifact') + '"',
+      };
+      const data = await proxyFetch('/api/plugins/score-investigation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId,
-          finalState: {
-            selectedArtifact: state.selectedArtifact,
-            inquiryQuestion: state.investigation.observations.slice(0, 200),
-            conclusion: state.investigation.hypothesis,
-            annotations: [
-              { type: 'evidence', content: state.investigation.evidence },
-              { type: 'interpretation', content: state.investigation.interpretation },
-            ],
-            observations: state.investigation.observations,
-            evidence: state.investigation.evidence,
-            interpretation: state.investigation.interpretation,
-            hypothesis: state.investigation.hypothesis,
-          },
-          summary: 'Investigation of "' + (state.selectedArtifact?.title || 'artifact') + '"',
-        }),
+        body: JSON.stringify(payload),
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.score) {
-          state.score = data.score;
-          state.llmFeedback = data.score.feedback || null;
-          renderScoreSection(data.score);
-          sendPluginComplete();
-          sendStateUpdate();
-        }
+      if (data && data.score) {
+        state.score = data.score;
+        state.llmFeedback = data.score.feedback || null;
+        renderScoreSection(data.score);
+        sendPluginComplete();
+        sendStateUpdate();
+      } else {
+        document.getElementById('scoring-pending').style.display = 'none';
+        sendPluginComplete();
       }
     } catch (err) {
       // Non-fatal — show conclude panel without score

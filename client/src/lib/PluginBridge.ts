@@ -217,16 +217,20 @@ export class PluginBridge {
       case "API_PROXY_REQUEST": {
         // The sandboxed iframe cannot fetch() directly — proxy through the parent.
         // Only allow relative /api/* paths to prevent SSRF.
-        const proxyMsg = msg as { requestId: string; url: string; method?: string; body?: unknown };
-        const { requestId, url: proxyUrl, method = "GET", body } = proxyMsg;
+        const proxyMsg = msg as { requestId: string; url: string; method?: string; body?: string | null; headers?: Record<string, string> | null };
+        const { requestId, url: proxyUrl, method = "GET", body, headers: customHeaders } = proxyMsg;
         if (!proxyUrl.startsWith("/api/")) {
           this.postProxyResponse(requestId, false, 403, { error: "Forbidden: only /api/* paths allowed" });
           break;
         }
+        // body may be a pre-stringified JSON string (from iframe) or an object
+        const fetchBody = body ? (typeof body === "string" ? body : JSON.stringify(body)) : undefined;
+        const fetchHeaders: Record<string, string> = { ...(customHeaders ?? {}) };
+        if (fetchBody && !fetchHeaders["Content-Type"]) fetchHeaders["Content-Type"] = "application/json";
         void fetch(proxyUrl, {
           method,
-          headers: body ? { "Content-Type": "application/json" } : undefined,
-          body: body ? JSON.stringify(body) : undefined,
+          headers: Object.keys(fetchHeaders).length > 0 ? fetchHeaders : undefined,
+          body: fetchBody,
           credentials: "include",
         })
           .then(async (r) => {

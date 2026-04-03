@@ -429,6 +429,25 @@ export default function Chat() {
 
   const activePluginId = activeConv?.activePluginId ?? null;
 
+  // Detect plugin switches and send a silent context message so the AI acknowledges the new activity
+  const prevPluginIdRef = useRef<string | null>(null);
+  const pluginNames: Record<string, string> = {
+    chess: "Chess",
+    timeline: "Timeline Builder",
+    "artifact-studio": "Artifact Investigation Studio",
+  };
+  useEffect(() => {
+    const prev = prevPluginIdRef.current;
+    const curr = activePluginId;
+    // Only fire when switching from one plugin to another (not on initial load)
+    if (prev !== null && curr !== null && prev !== curr && activeConvId && !isStreaming) {
+      const name = pluginNames[curr] ?? curr;
+      handleSendMessage(`I just switched to ${name}. Please acknowledge and help me get started with this activity.`);
+    }
+    prevPluginIdRef.current = curr;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePluginId]);
+
   const { data: pluginSchema } = trpc.plugins.getSchema.useQuery(
     { pluginId: activePluginId! },
     { enabled: activePluginId !== null },
@@ -464,12 +483,38 @@ export default function Chat() {
     onError: () => toast.error("Failed to close plugin"),
   });
 
+  const activatePlugin = trpc.plugins.activate.useMutation({
+    onSuccess: () => {
+      utils.conversations.get.invalidate({ id: activeConvId! });
+      utils.conversations.list.invalidate();
+    },
+  });
+
+  // Pending quick-start: { pluginId, message } to fire after conversation is created
+  const pendingQuickStartRef = useRef<{ pluginId: string; message: string } | null>(null);
+
   const createConv = trpc.conversations.create.useMutation({
     onSuccess: conv => {
       startHistoryTransition(() => {
         utils.conversations.list.invalidate();
         setActiveConvId(conv.id);
       });
+      // Auto-activate plugin and send message if quick-start was triggered
+      const qs = pendingQuickStartRef.current;
+      if (qs) {
+        pendingQuickStartRef.current = null;
+        // Set the pending auto-send message BEFORE activation so the effect fires when plugin becomes active
+        pendingAutoSendRef.current = qs.message;
+        activatePlugin.mutate(
+          { conversationId: conv.id, pluginId: qs.pluginId },
+          {
+            onSuccess: () => {
+              utils.conversations.get.invalidate({ id: conv.id });
+              utils.conversations.list.invalidate();
+            },
+          }
+        );
+      }
     },
   });
 
@@ -478,12 +523,27 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [optimisticMessages.length, streamingContent]);
 
+  // Auto-send for quick-start: fires once when plugin is active and a pending message exists
+  const pendingAutoSendRef = useRef<string | null>(null);
+  useEffect(() => {
+    const msg = pendingAutoSendRef.current;
+    if (msg && activeConvId && activePluginId && !isStreaming) {
+      pendingAutoSendRef.current = null;
+      // Small delay to let the plugin iframe mount and send PLUGIN_READY
+      const timer = setTimeout(() => {
+        handleSendMessage(msg);
+      }, 900);
+      return () => clearTimeout(timer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConvId, activePluginId, isStreaming]);
+
   // ── Send message ──────────────────────────────────────────────────────────
-  const handleSendMessage = useCallback(async () => {
-    const content = inputValue.trim();
+  const handleSendMessage = useCallback(async (overrideContent?: string) => {
+    const content = (overrideContent ?? inputValue).trim();
     if (!activeConvId || isStreaming || !content) return;
 
-    setInputValue("");
+    if (!overrideContent) setInputValue("");
     const optimisticId = `opt-${Date.now()}`;
     startTransition(() => {
       addOptimisticMessage({ id: optimisticId, role: "user", content, createdAt: new Date() });
@@ -681,6 +741,22 @@ export default function Chat() {
     createConv.mutate({ title: "New conversation" });
   };
 
+  // Quick-start: create conversation, activate plugin, and pre-fill message
+  const handleQuickStart = useCallback((label: string) => {
+    const pluginMap: Record<string, string> = {
+      "Play chess with me": "chess",
+      "Explore a historical artifact": "artifact-studio",
+      "Build a timeline of WWII": "timeline",
+    };
+    const pluginId = pluginMap[label];
+    if (pluginId) {
+      pendingQuickStartRef.current = { pluginId, message: label };
+    } else {
+      pendingQuickStartRef.current = null;
+    }
+    createConv.mutate({ title: label.slice(0, 40) });
+  }, [createConv]);
+
   const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
   const deleteConv = trpc.conversations.delete.useMutation({
     onMutate: (vars) => setDeletingConvId(vars.id),
@@ -796,7 +872,7 @@ export default function Chat() {
 
         {/* Content area */}
         {!activeConvId ? (
-          <EmptyState onNew={handleNewChat} isCreating={createConv.isPending} onQuickStart={text => setInputValue(text)} />
+          <EmptyState onNew={handleNewChat} isCreating={createConv.isPending} onQuickStart={handleQuickStart} />
         ) : (
           <div className="flex flex-1 overflow-hidden min-h-0">
             {/* ── Chat panel ───────────────────────────────────────────── */}
@@ -847,7 +923,7 @@ export default function Chat() {
                       inputValue.trim() && !isStreaming && "glow-primary"
                     )}
                     disabled={!inputValue.trim() || isStreaming}
-                    onClick={handleSendMessage}
+                    onClick={() => handleSendMessage()}
                     aria-label="Send message"
                   >
                     {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

@@ -367,7 +367,7 @@ function onSquareClick(sq) {
     if (isLegalDest) {
       const isPromo = legalMovesForSelected.some(m => m.to === sq && m.flags.includes('p'));
       if (isPromo) { pendingPromotion = { from: selectedSquare, to: sq }; showPromoModal(); return; }
-      executeMove(selectedSquare + sq); return;
+      executeMove(selectedSquare + sq, true); return;
     }
     const piece = chess.get(sq);
     if (piece && piece.color === chess.turn()) { selectSquare(sq); return; }
@@ -391,7 +391,7 @@ function snapBack(sq) {
   el.classList.add('snap-back');
   setTimeout(() => el.classList.remove('snap-back'), 400);
 }
-function executeMove(moveStr) {
+function executeMove(moveStr, fromHuman) {
   const result = chess.move(moveStr);
   if (!result) {
     if (selectedSquare) snapBack(selectedSquare);
@@ -401,7 +401,7 @@ function executeMove(moveStr) {
   }
   lastMoveSquares = [result.from, result.to];
   selectedSquare = null; legalMovesForSelected = [];
-  renderBoard(); updateInfo(); sendStateUpdate(); checkGameOver();
+  renderBoard(); updateInfo(); sendStateUpdate(fromHuman ? 'human' : false); checkGameOver();
   return true;
 }
 
@@ -417,7 +417,7 @@ function showPromoModal() {
     btn.innerHTML = PIECES_SVG[turn + type.toUpperCase()] || label;
     btn.addEventListener('click', () => {
       modal.classList.remove('open');
-      if (pendingPromotion) { executeMove(pendingPromotion.from + pendingPromotion.to + type); pendingPromotion = null; }
+      if (pendingPromotion) { executeMove(pendingPromotion.from + pendingPromotion.to + type, true); pendingPromotion = null; }
     });
     choices.appendChild(btn);
   });
@@ -525,7 +525,10 @@ function toggleTeachMe() {
 // ─── Plugin messaging ─────────────────────────────────────────────────────
 function sendMsg(msg) { if (registeredOrigin) window.parent.postMessage(msg, registeredOrigin); }
 function sendStateUpdate(partial) {
-  sendMsg({ type:'STATE_UPDATE', version:1, sessionId, pluginId, state:buildChessState(partial), partial:!!partial });
+  const isHuman = partial === 'human';
+  const state = buildChessState(false);
+  state.humanMove = isHuman; // true only when a human clicked a piece
+  sendMsg({ type:'STATE_UPDATE', version:1, sessionId, pluginId, state, partial: false });
 }
 function sendPluginComplete(reason, summary) {
   sendMsg({ type:'PLUGIN_COMPLETE', version:1, sessionId, pluginId, finalState:buildChessState(false), summary });

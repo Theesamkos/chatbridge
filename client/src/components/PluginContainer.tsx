@@ -217,13 +217,14 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
           onStateUpdate(state, _partial) {
             // Transition to active on first state update
             if (!destroyed) setLifecycleState(prev => prev === "ready" ? "active" : prev);
-            // Chess auto-play: when it's Black's turn after a manual White move, trigger AI
+            // Chess auto-play: only fire when the human made the move (humanMove flag)
+            // This prevents infinite loops when the AI's own make_move triggers STATE_UPDATE
             if (pluginId === "chess" && !destroyed && onRequestAiMove) {
               const cs = state as Record<string, unknown>;
-              const turn = cs?.turn as string | undefined;
-              const history = cs?.history as string[] | undefined;
-              const lastMove = history && history.length > 0 ? history[history.length - 1] : null;
-              if (turn === "b" && lastMove) {
+              const humanMove = cs?.humanMove as boolean | undefined;
+              const moveHistory = cs?.moveHistory as string[] | undefined;
+              const lastMove = moveHistory && moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : null;
+              if (humanMove === true && lastMove) {
                 onRequestAiMove(lastMove);
               }
             }
