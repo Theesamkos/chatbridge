@@ -86,7 +86,7 @@ const artifactSchema = z.object({
   id: z.string().max(128),
   title: z.string().max(300),
   imageUrl: z.string().url().max(500),
-  source: z.enum(["smithsonian", "loc", "cache"]).optional(),
+  source: z.enum(["met", "cache"]).optional(),
   metadata: z
     .object({
       date: z.string().max(100).optional(),
@@ -106,7 +106,7 @@ export const artifactStudioStateSchema = z.object({
   completed: z.boolean().optional(),
   startedAt: z.number().optional(),
   completedAt: z.number().optional(),
-  apiSource: z.enum(["smithsonian", "loc", "cache", "none"]).optional(),
+  apiSource: z.enum(["met", "cache", "none"]).optional(),
 });
 
 export type ArtifactStudioState = z.infer<typeof artifactStudioStateSchema>;

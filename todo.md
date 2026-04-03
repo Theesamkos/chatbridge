@@ -198,3 +198,22 @@
 ## Production Bug: AI Silence + "1 error" Toast (Timeline + Chess)
 - [x] Diagnose "1 error" toast: root cause confirmed — Zod schema rejected initial plugin states (events/fen/investigation undefined on mount)
 - [x] Fix the root cause: made all initial-state fields .optional() in pluginStateSchemas.ts; injection detection still catches real attacks; 152/152 tests passing
+
+## Artifact Studio: Replace Smithsonian/LoC with Met Museum API
+- [x] Research Met Museum API endpoints (search, object detail) and data shape
+- [x] Rewrite server/routers/artifacts.ts to use Met Museum API (no key required)
+- [x] Update artifact-studio iframe to match Met Museum data shape (imageUrl, metadata fields)
+- [x] Update Zod schema source enum (smithsonian/loc → met/cache)
+- [x] Update seed.ts tool descriptions to reference Met Museum
+- [x] Update contextAssembly.ts system prompt to reference Met Museum
+- [x] Update/fix pluginStateSchemas.test.ts fixture for new source
+- [x] 152/152 tests passing, 0 TS errors
+
+## Chess: Click-to-Move + Legal Move Dots + Assistance Toggle
+- [x] Click piece → show legal move dots → click dot to move (already implemented)
+- [x] Snap-back animation when user drops piece on illegal square
+- [x] Assistance mode (default ON): shows legal move dots on click
+- [x] toggle_assistance tool: AI can turn assistance on/off via chat command
+- [x] Add toggle_assistance to chess seed tool schemas + re-seeded DB
+- [x] Update contextAssembly chess system prompt to describe assistance toggle
+- [x] 152/152 tests passing, 0 TS errors

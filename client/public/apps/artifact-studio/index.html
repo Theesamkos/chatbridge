@@ -1147,7 +1147,7 @@
       <div class="discover-hero">
         <div class="discover-badge">🏛️ Artifact Investigation Studio</div>
         <h1 class="discover-title">What will you investigate?</h1>
-        <p class="discover-subtitle">Search the Smithsonian Open Access collection. Select an artifact to begin your structured historical inquiry.</p>
+        <p class="discover-subtitle">Search the Metropolitan Museum of Art Open Access collection. Select an artifact to begin your structured historical inquiry.</p>
         <div class="search-row">
           <input id="search-input" class="search-input" type="text" placeholder="e.g. Civil War rifle, ancient pottery, moon landing…" aria-label="Search artifacts" maxlength="200" />
           <button id="search-btn" class="btn btn-primary" aria-label="Search">Search</button>
@@ -1176,7 +1176,7 @@
           </div>
           <div class="inspect-img-overlay"></div>
           <div class="inspect-img-caption">
-            <div class="source-pill" id="inspect-source-pill">📚 Smithsonian</div>
+            <div class="source-pill" id="inspect-source-pill">🏛️ Met Museum</div>
           </div>
         </div>
         <div class="inspect-detail-col">
@@ -1570,7 +1570,7 @@
 
         case 'get_artifact_detail': {
           const id = sanitizeString(args.id || '');
-          const source = (args.source === 'loc') ? 'loc' : 'smithsonian';
+          const source = 'met';
           if (!id) { sendToolResult(toolCallId, { error: 'id is required' }, true); return; }
           const detail = await apiGetArtifactDetail(id, source);
           if (detail && detail.id !== id && detail.title === 'Unavailable') {
@@ -1810,7 +1810,7 @@
       return;
     }
 
-    const sourceLabel = source === 'loc' ? '📚 Library of Congress' : '🏛️ Smithsonian';
+    const sourceLabel = '🏛️ Met Museum';
     let html = '<div class="results-header">' +
       '<span class="results-count">' + escapeHtml(String(artifacts.length)) + ' of ' + escapeHtml(String(totalCount || artifacts.length)) + ' results</span>' +
       '<span class="results-source">' + escapeHtml(sourceLabel) + '</span>' +
@@ -1822,9 +1822,9 @@
         ? '<img class="card-img" src="' + escapeAttr(art.thumbnailUrl || art.imageUrl) + '" alt="' + escapeAttr(art.title || 'Artifact') + '" loading="lazy" />'
         : '<div class="card-img-placeholder">🏛️</div>';
 
-      html += '<div class="artifact-card" data-id="' + escapeAttr(art.id) + '" data-source="' + escapeAttr(art.source || 'smithsonian') + '" role="button" tabindex="0" aria-label="Select artifact: ' + escapeAttr(art.title || 'Untitled') + '">' +
+      html += '<div class="artifact-card" data-id="' + escapeAttr(art.id) + '" data-source="met" role="button" tabindex="0" aria-label="Select artifact: ' + escapeAttr(art.title || 'Untitled') + '">' +
         '<div class="card-img-wrap">' + imgHtml +
-        '<div class="card-source-badge">' + escapeHtml(art.source === 'loc' ? 'LoC' : 'SI') + '</div>' +
+        '<div class="card-source-badge">Met</div>' +
         '</div>' +
         '<div class="card-body">' +
         '<div class="card-title">' + escapeHtml(art.title || 'Untitled') + '</div>' +
@@ -1878,7 +1878,7 @@
 
     // Source pill
     const pill = document.getElementById('inspect-source-pill');
-    if (pill) pill.textContent = artifact.source === 'loc' ? '📚 Library of Congress' : '🏛️ Smithsonian';
+    if (pill) pill.textContent = '🏛️ Met Museum';
 
     // Title
     document.getElementById('inspect-title').textContent = artifact.title || 'Untitled Artifact';
@@ -1891,7 +1891,7 @@
       ['Medium', artifact.medium],
       ['Dimensions', artifact.dimensions],
       ['Provenance', artifact.provenance],
-      ['Source', artifact.source === 'loc' ? 'Library of Congress' : 'Smithsonian Institution'],
+      ['Source', 'Metropolitan Museum of Art'],
     ];
     fields.forEach(function (pair) {
       if (!pair[1]) return;
@@ -1992,7 +1992,7 @@
     try {
       let detail = knownData || null;
       try {
-        const full = await apiGetArtifactDetail(id, source || 'smithsonian');
+        const full = await apiGetArtifactDetail(id, 'met');
         if (full && full.title !== 'Unavailable') detail = full;
       } catch (_) { /* use knownData */ }
 

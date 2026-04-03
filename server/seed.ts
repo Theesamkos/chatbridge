@@ -90,6 +90,22 @@ const plugins: InsertPluginSchema[] = [
           required: [],
         },
       },
+      {
+        name: "toggle_assistance",
+        description:
+          "Enable or disable the move-assistance overlay (legal move dots) on the chess board. Call this when the student says they want to turn off hints, play without help, or conversely asks for hints to be shown again. When disabled, clicking a piece will NOT show available move dots — the student must know the rules themselves.",
+        parameters: {
+          type: "object",
+          properties: {
+            enabled: {
+              type: "boolean",
+              description:
+                "true to show legal move dots (assistance ON), false to hide them (assistance OFF). Omit to toggle the current state.",
+            },
+          },
+          required: [],
+        },
+      },
     ],
     manifest: {
       lifecycleType: "continuous_bidirectional",
@@ -171,7 +187,7 @@ const plugins: InsertPluginSchema[] = [
       {
         name: "search_artifacts",
         description:
-          "Search the Smithsonian Open Access collection (with Library of Congress fallback) for artifacts matching a query. Call this when the student wants to find objects to investigate. Optionally filter by date range or cultural context. Results are paginated — pass page to load more.",
+          "Search the Metropolitan Museum of Art Open Access collection for artifacts matching a query. Call this when the student wants to find objects to investigate. Optionally filter by cultural context. Results are paginated — pass page to load more.",
         parameters: {
           type: "object",
           properties: {
@@ -200,7 +216,7 @@ const plugins: InsertPluginSchema[] = [
       {
         name: "get_artifact_detail",
         description:
-          "Retrieve full metadata and images for a specific artifact by its id and source. Call this after the student selects an item from search results to load it into the investigation view. Requires the id and source ('smithsonian' or 'loc') returned by search_artifacts.",
+          "Retrieve full metadata and images for a specific artifact by its id and source. Call this after the student selects an item from search results to load it into the investigation view. Requires the id and source ('met') returned by search_artifacts.",
         parameters: {
           type: "object",
           properties: {
@@ -210,8 +226,8 @@ const plugins: InsertPluginSchema[] = [
             },
             source: {
               type: "string",
-              enum: ["smithsonian", "loc"],
-              description: "API source the artifact came from.",
+              enum: ["met"],
+              description: "API source the artifact came from. Always 'met' for Metropolitan Museum of Art.",
             },
           },
           required: ["id", "source"],

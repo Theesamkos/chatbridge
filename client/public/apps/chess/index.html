@@ -44,6 +44,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);
   background:rgba(0,0,0,0.22);border-radius:50%;pointer-events:none;z-index:2}
 .square.legal-capture::after{content:'';position:absolute;inset:0;border-radius:50%;
   border:4px solid rgba(0,0,0,0.22);background:transparent;pointer-events:none;z-index:2}
+@keyframes snap-back{0%{transform:scale(1.12);opacity:0.7}60%{transform:scale(0.95)}100%{transform:scale(1);opacity:1}}
+.square.snap-back{animation:snap-back 0.35s cubic-bezier(0.4,0,0.2,1) forwards}
 #promo-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);
   z-index:100;align-items:center;justify-content:center}
 #promo-modal.open{display:flex}
@@ -197,6 +199,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         Teach Me Mode: OFF
       </button>
+      <button class="btn" id="assistance-btn" onclick="toggleAssistance()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        Assistance: ON
+      </button>
       <button class="btn danger" onclick="handleResign()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
         Resign
@@ -230,6 +236,7 @@ let legalMovesForSelected = [];
 let lastMoveSquares = [];
 let gameOver = false;
 let teachMeMode = false;
+let assistanceMode = true; // shows legal move dots; toggled via chat or button
 let sessionId = null;
 let pluginId = 'chess';
 let conversationId = null;
@@ -269,7 +276,7 @@ function buildChessState(partial) {
     moveCount: Math.ceil(chess.history().length / 2),
     isCheck: chess.in_check(), isCheckmate: chess.in_checkmate(),
     isStalemate: chess.in_stalemate(), isDraw: chess.in_draw(),
-    teachMeMode, partial: !!partial,
+    teachMeMode, assistanceMode, partial: !!partial,
   };
 }
 function getGameStatus() {
@@ -318,7 +325,7 @@ function renderBoard() {
       else if (sq === lastMoveSquares[0]) div.classList.add('last-from');
       else if (sq === lastMoveSquares[1]) div.classList.add('last-to');
       if (kingSquare && sq === kingSquare) div.classList.add('in-check');
-      if (legalSet.has(sq)) div.classList.add(legalCaptureSet.has(sq) ? 'legal-capture' : 'legal-move');
+      if (assistanceMode && legalSet.has(sq)) div.classList.add(legalCaptureSet.has(sq) ? 'legal-capture' : 'legal-move');
       const piece = boardArr[br][bc];
       if (piece) { const svg = PIECES_SVG[piece.color + piece.type.toUpperCase()]; if (svg) div.innerHTML = svg; }
       div.addEventListener('click', () => onSquareClick(sq));
@@ -376,9 +383,22 @@ function selectSquare(sq) {
   legalMovesForSelected = chess.moves({ square: sq, verbose: true });
   renderBoard();
 }
+function snapBack(sq) {
+  const el = document.querySelector(`[data-square="${sq}"]`);
+  if (!el) return;
+  el.classList.remove('snap-back');
+  void el.offsetWidth; // force reflow
+  el.classList.add('snap-back');
+  setTimeout(() => el.classList.remove('snap-back'), 400);
+}
 function executeMove(moveStr) {
   const result = chess.move(moveStr);
-  if (!result) return false;
+  if (!result) {
+    if (selectedSquare) snapBack(selectedSquare);
+    selectedSquare = null; legalMovesForSelected = [];
+    renderBoard();
+    return false;
+  }
   lastMoveSquares = [result.from, result.to];
   selectedSquare = null; legalMovesForSelected = [];
   renderBoard(); updateInfo(); sendStateUpdate(); checkGameOver();
@@ -482,6 +502,15 @@ function handleResign() {
   document.getElementById('status-text').textContent = `${c} resigned. ${w} wins.`;
   sendStateUpdate(); sendPluginComplete('resignation', `${c} resigned. ${w} wins.`);
 }
+function toggleAssistance() {
+  assistanceMode = !assistanceMode;
+  const btn = document.getElementById('assistance-btn');
+  const icon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>`;
+  btn.innerHTML = icon + ` Assistance: ${assistanceMode ? 'ON' : 'OFF'}`;
+  btn.classList.toggle('teach-active', assistanceMode);
+  selectedSquare = null; legalMovesForSelected = [];
+  renderBoard(); sendStateUpdate();
+}
 function toggleTeachMe() {
   teachMeMode = !teachMeMode;
   const btn = document.getElementById('teach-me-btn');
@@ -562,6 +591,20 @@ function handleToolInvoke(msg) {
           moves: moves.map(m => ({ uci:m.from+m.to+(m.promotion||''), san:m.san, from:m.from, to:m.to, piece:m.piece, flags:m.flags })),
           count: moves.length, turn: chess.turn()==='w'?'white':'black', fen: chess.fen()
         }, false);
+        break;
+      }
+      case 'toggle_assistance': {
+        const enable = args && typeof args.enabled === 'boolean' ? args.enabled : !assistanceMode;
+        assistanceMode = enable;
+        const btn = document.getElementById('assistance-btn');
+        if (btn) {
+          const icon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>`;
+          btn.innerHTML = icon + ` Assistance: ${assistanceMode ? 'ON' : 'OFF'}`;
+          btn.classList.toggle('teach-active', assistanceMode);
+        }
+        selectedSquare = null; legalMovesForSelected = [];
+        renderBoard(); sendStateUpdate();
+        sendToolResult(toolCallId, { assistanceMode, message: `Move assistance ${assistanceMode ? 'enabled — legal move dots are visible.' : 'disabled — no hints shown.'}` }, false);
         break;
       }
       case 'get_help': {

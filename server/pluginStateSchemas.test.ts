@@ -143,10 +143,10 @@ describe("validatePluginState — timeline", () => {
 describe("validatePluginState — artifact-studio", () => {
   const validArtifactState = {
     artifact: {
-      id: "smithsonian-123",
+      id: "12345",
       title: "Ancient Roman Coin",
-      imageUrl: "https://ids.si.edu/ids/deliveryService?id=NMAH-123",
-      source: "smithsonian",
+      imageUrl: "https://images.metmuseum.org/CRDImages/gr/original/DP251139.jpg",
+      source: "met",
     },
     step: "investigate",
     investigation: {

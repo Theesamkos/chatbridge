@@ -151,7 +151,7 @@ export async function assembleContext(
   if (activePluginId === "artifact-studio") {
     systemMessage +=
       "\n\n## ARTIFACT INVESTIGATION STUDIO — YOU ARE THE INQUIRY GUIDE\n" +
-      "The student is conducting a structured historical inquiry using real artifacts from the Smithsonian and Library of Congress.\n\n" +
+      "The student is conducting a structured historical inquiry using real artifacts from the Metropolitan Museum of Art Open Access collection.\n\n" +
       "THE FOUR-STEP WORKFLOW:\n" +
       "  Step 1 — DISCOVER: Student searches for artifacts. You call search_artifacts with relevant terms.\n" +
       "  Step 2 — INSPECT: Student examines a specific artifact. You call get_artifact_detail to load it.\n" +
@@ -179,6 +179,17 @@ export async function assembleContext(
     const pluginName = pluginSchema?.name ?? activePluginId;
     systemMessage +=
       `\n\nCurrent ${pluginName} state: ${JSON.stringify(pluginState, null, 2)}`;
+
+    // Assistance mode: inform AI whether move dots are visible
+    if (activePluginId === "chess") {
+      const assistanceMode = (pluginState as Record<string, unknown>).assistanceMode;
+      if (assistanceMode === false) {
+        systemMessage +=
+          "\n\nASSISTANCE MODE IS OFF. The student has chosen to play without legal move hints. " +
+          "Do NOT offer to show legal moves or suggest squares unless the student explicitly asks. " +
+          "Respect their choice to play independently. If they make an illegal move, the board will snap back automatically.";
+      }
+    }
 
     // Teach Me Mode: inject chess-specific coaching prompt (Rule 12)
     if (
