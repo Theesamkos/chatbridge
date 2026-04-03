@@ -10,7 +10,7 @@
  */
 
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { publicProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -246,7 +246,7 @@ export const timelineRouter = router({
    * Fetch historical events for a given topic from Wikipedia's On This Day API.
    * Falls back to curated data if Wikipedia returns insufficient results.
    */
-  getEvents: protectedProcedure
+  getEvents: publicProcedure
     .input(z.object({ topic: z.string().min(1).max(200) }))
     .query(async ({ input }) => {
       const { topic } = input;
@@ -296,7 +296,7 @@ export const timelineRouter = router({
   /**
    * List all available topics.
    */
-  listTopics: protectedProcedure.query(() => {
+  listTopics: publicProcedure.query(() => {
     return {
       topics: Object.keys(TOPIC_CONFIG),
     };

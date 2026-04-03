@@ -393,8 +393,6 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
           src={schema.iframeUrl}
           // Rule 1: exact sandbox — never add allow-same-origin
           sandbox="allow-scripts allow-forms allow-popups"
-          // Rule 20: credentialless prevents cookie/storage inheritance
-          {...({ credentialless: "" } as Record<string, unknown>)}
           // Rule 39: descriptive title for screen readers
           title={`${schema.name} learning activity`}
           className={cn(

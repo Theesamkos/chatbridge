@@ -1663,19 +1663,20 @@
     const input = { query, page: page || 0 };
     if (dateRange) input.dateRange = dateRange;
     if (culturalContext) input.culturalContext = culturalContext;
-    const url = '/api/trpc/artifacts.search?input=' + encodeURIComponent(JSON.stringify({ json: input }));
+    const url = '/api/trpc/artifacts.search?batch=1&input=' + encodeURIComponent(JSON.stringify({ '0': { json: input } }));
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const json = await res.json();
-    return json.result?.data?.json ?? json.result?.data ?? { artifacts: [], totalCount: 0, source: 'unavailable' };
+    const data = await res.json();
+    const result = data?.[0]?.result?.data?.json;
+    return result ?? { artifacts: [], totalCount: 0, source: 'unavailable' };
   }
 
   async function apiGetArtifactDetail(id, source) {
-    const url = '/api/trpc/artifacts.getDetail?input=' + encodeURIComponent(JSON.stringify({ json: { id, source } }));
+    const url = '/api/trpc/artifacts.getDetail?batch=1&input=' + encodeURIComponent(JSON.stringify({ '0': { json: { id, source } } }));
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const json = await res.json();
-    return json.result?.data?.json ?? json.result?.data ?? null;
+    const data = await res.json();
+    return data?.[0]?.result?.data?.json ?? null;
   }
 
   async function triggerScoring() {
