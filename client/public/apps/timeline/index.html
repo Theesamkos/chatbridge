@@ -718,6 +718,47 @@ let pluginId = 'timeline';
 let conversationId = null;
 let registeredOrigin = null;
 
+// ─── API proxy via postMessage (sandboxed iframe cannot fetch directly) ────────
+const pendingProxyRequests = new Map();
+let proxyRequestCounter = 0;
+
+function proxyFetch(url, options) {
+  return new Promise(function(resolve, reject) {
+    const requestId = 'tl-proxy-' + (++proxyRequestCounter);
+    const timeout = setTimeout(function() {
+      pendingProxyRequests.delete(requestId);
+      reject(new Error('Proxy request timed out'));
+    }, 15000);
+    pendingProxyRequests.set(requestId, { resolve, reject, timeout });
+    window.parent.postMessage({
+      type: 'API_PROXY_REQUEST',
+      version: 1,
+      sessionId,
+      pluginId,
+      requestId,
+      url,
+      method: (options && options.method) || 'GET',
+      body: (options && options.body) || null,
+      headers: (options && options.headers) || null,
+    }, '*');
+  });
+}
+
+// Handle proxy responses from parent
+window.addEventListener('message', function(event) {
+  if (!event.data || event.data.type !== 'API_PROXY_RESPONSE') return;
+  const msg = event.data;
+  const pending = pendingProxyRequests.get(msg.requestId);
+  if (!pending) return;
+  clearTimeout(pending.timeout);
+  pendingProxyRequests.delete(msg.requestId);
+  if (msg.ok) {
+    pending.resolve(msg.data);
+  } else {
+    pending.reject(new Error('Proxy error ' + msg.status));
+  }
+});
+
 // ─── App state ────────────────────────────────────────────────────────────────
 let currentTopic = null;
 let currentEvents = [];   // student's current ordering
@@ -937,16 +978,14 @@ function onDrop(e) {
   sendStateUpdate();
 }
 
-// ─── Activity logic ───────────────────────────────────────────────────────────
-// ─── Live API fetch (Wikipedia via server) ─────────────────────────────────────────────────
+// ─── Activity logic ────────────────────────────────────────────────────────// ─── Live API fetch (Wikipedia via server, proxied through parent) ─────────────────────
 async function fetchLiveTopicEvents(topicName) {
   if (liveTopicsCache[topicName]) return liveTopicsCache[topicName];
   try {
     const url = '/api/trpc/timeline.getEvents?batch=1&input=' +
       encodeURIComponent(JSON.stringify({ '0': { json: { topic: topicName } } }));
-    const res = await fetch(url, { credentials: 'include' });
-    if (!res.ok) return null;
-    const data = await res.json();
+    // Use proxyFetch since sandboxed iframes cannot fetch() directly
+    const data = await proxyFetch(url);
     const result = data?.[0]?.result?.data?.json;
     if (!result || !Array.isArray(result.events) || result.events.length < 4) return null;
     liveTopicsCache[topicName] = result.events;

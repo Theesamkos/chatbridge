@@ -323,6 +323,12 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
+  // Debug: log payload summary
+  console.log(`[llm] invokeLLM: model=${payload.model}, msgs=${(payload.messages as unknown[]).length}, tools=${payload.tools ? (payload.tools as unknown[]).length : 0}, tool_choice=${JSON.stringify(payload.tool_choice)}`);
+  if (payload.tools) {
+    console.log(`[llm] first tool: ${JSON.stringify((payload.tools as unknown[])[0]).substring(0, 150)}`);
+  }
+
   const response = await fetch(resolveApiUrl(), {
     method: "POST",
     headers: {
@@ -339,7 +345,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  const result = (await response.json()) as InvokeResult;
+  // Debug: log response
+  const firstChoice = result.choices?.[0];
+  console.log(`[llm] response: finish_reason=${firstChoice?.finish_reason}, tool_calls=${firstChoice?.message?.tool_calls?.length ?? 0}, content=${JSON.stringify(firstChoice?.message?.content)?.substring(0, 100)}`);
+  return result;
 }
 
 /**

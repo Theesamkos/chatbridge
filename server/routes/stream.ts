@@ -138,6 +138,8 @@ export async function streamHandler(req: Request, res: Response): Promise<void> 
     return;
   }
   const assembleDuration = Date.now() - assembleStart;
+  // Debug: log context summary
+  console.log(`[stream] convId=${conversationId} pluginId=${context.pluginId}, tools=${context.tools?.length ?? 0}, sysMsg=${context.systemMessage.substring(0, 100)}...`);
 
   // ── 6. SSE headers (Rule 16: flush before LLM — Server-Timing set here) ─────
   //       assembleContext is complete so we can include its duration.

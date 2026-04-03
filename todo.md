@@ -226,5 +226,5 @@
 - [x] 152/152 tests passing, 0 TS errors
 
 ## Recommended Steps
-- [ ] Chess: auto-play Black after every White move (iframe sends REQUEST_AI_MOVE → server triggers AI make_move)
-- [ ] Artifact Studio: fix triggerScoring to use postMessage proxy instead of blocked direct fetch
+- [x] Chess: auto-play Black after every White move (humanMove flag + onRequestAiMove + triggerAiMove with autoPlay flag)
+- [x] Artifact Studio: fix triggerScoring to use postMessage proxy (proxyFetch with POST support) instead of blocked direct fetch

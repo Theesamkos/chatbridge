@@ -367,7 +367,7 @@ function onSquareClick(sq) {
     if (isLegalDest) {
       const isPromo = legalMovesForSelected.some(m => m.to === sq && m.flags.includes('p'));
       if (isPromo) { pendingPromotion = { from: selectedSquare, to: sq }; showPromoModal(); return; }
-      executeMove(selectedSquare + sq, true); return;
+      executeMove({ from: selectedSquare, to: sq }, true); return;
     }
     const piece = chess.get(sq);
     if (piece && piece.color === chess.turn()) { selectSquare(sq); return; }
@@ -391,8 +391,17 @@ function snapBack(sq) {
   el.classList.add('snap-back');
   setTimeout(() => el.classList.remove('snap-back'), 400);
 }
-function executeMove(moveStr, fromHuman) {
-  const result = chess.move(moveStr);
+function executeMove(moveArg, fromHuman) {
+  // Accept object {from,to,promotion} or UCI string 'e2e4' or SAN string 'e4'
+  let moveInput = moveArg;
+  if (typeof moveArg === 'string') {
+    const uciMatch = moveArg.match(/^([a-h][1-8])([a-h][1-8])([qrbn])?$/i);
+    if (uciMatch) {
+      moveInput = { from: uciMatch[1].toLowerCase(), to: uciMatch[2].toLowerCase() };
+      if (uciMatch[3]) moveInput.promotion = uciMatch[3].toLowerCase();
+    }
+  }
+  const result = chess.move(moveInput);
   if (!result) {
     if (selectedSquare) snapBack(selectedSquare);
     selectedSquare = null; legalMovesForSelected = [];
@@ -417,7 +426,7 @@ function showPromoModal() {
     btn.innerHTML = PIECES_SVG[turn + type.toUpperCase()] || label;
     btn.addEventListener('click', () => {
       modal.classList.remove('open');
-      if (pendingPromotion) { executeMove(pendingPromotion.from + pendingPromotion.to + type, true); pendingPromotion = null; }
+      if (pendingPromotion) { executeMove({ from: pendingPromotion.from, to: pendingPromotion.to, promotion: type }, true); pendingPromotion = null; }
     });
     choices.appendChild(btn);
   });

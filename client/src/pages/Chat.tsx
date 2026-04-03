@@ -415,6 +415,8 @@ export default function Chat() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pluginContainerRef = useRef<PluginContainerHandle | null>(null);
+  // Stable ref to always call the latest handleSendMessage (avoids stale closure in setTimeout)
+  const handleSendMessageRef = useRef<((msg?: string, convIdOverride?: string) => void) | null>(null);
 
   const sessionId = useId();
 
@@ -427,7 +429,15 @@ export default function Chat() {
     { enabled: activeConvId !== null },
   );
 
-  const activePluginId = activeConv?.activePluginId ?? null;
+  // Optimistic plugin ID: set immediately when plugin is activated (before DB round-trip)
+  const [optimisticPluginId, setOptimisticPluginId] = useState<string | null>(null);
+  const activePluginId = optimisticPluginId ?? activeConv?.activePluginId ?? null;
+  // Clear optimistic ID once the DB value arrives
+  useEffect(() => {
+    if (activeConv?.activePluginId && optimisticPluginId === activeConv.activePluginId) {
+      setOptimisticPluginId(null);
+    }
+  }, [activeConv?.activePluginId, optimisticPluginId]);
 
   // Detect plugin switches and send a silent context message so the AI acknowledges the new activity
   const prevPluginIdRef = useRef<string | null>(null);
@@ -495,22 +505,35 @@ export default function Chat() {
 
   const createConv = trpc.conversations.create.useMutation({
     onSuccess: conv => {
+      // Set activeConvId immediately (not inside transition) so quick-start effects fire synchronously
+      setActiveConvId(conv.id);
       startHistoryTransition(() => {
         utils.conversations.list.invalidate();
-        setActiveConvId(conv.id);
       });
       // Auto-activate plugin and send message if quick-start was triggered
       const qs = pendingQuickStartRef.current;
       if (qs) {
         pendingQuickStartRef.current = null;
-        // Set the pending auto-send message BEFORE activation so the effect fires when plugin becomes active
-        pendingAutoSendRef.current = qs.message;
+        const qsMessage = qs.message;
+        const qsPluginId = qs.pluginId;
+        // Optimistically show the plugin panel immediately (before DB round-trip)
+        setOptimisticPluginId(qsPluginId);
         activatePlugin.mutate(
-          { conversationId: conv.id, pluginId: qs.pluginId },
+          { conversationId: conv.id, pluginId: qsPluginId },
           {
             onSuccess: () => {
+              // DB is now updated — safe to send the message (server will see activePluginId)
               utils.conversations.get.invalidate({ id: conv.id });
               utils.conversations.list.invalidate();
+              // Delay slightly to let the plugin iframe mount and send PLUGIN_READY
+              // Pass conv.id explicitly to avoid stale activeConvId closure
+              setTimeout(() => {
+                handleSendMessageRef.current?.(qsMessage, conv.id);
+              }, 1200);
+            },
+            onError: () => {
+              // Roll back optimistic update on failure
+              setOptimisticPluginId(null);
             },
           }
         );
@@ -523,25 +546,15 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [optimisticMessages.length, streamingContent]);
 
-  // Auto-send for quick-start: fires once when plugin is active and a pending message exists
-  const pendingAutoSendRef = useRef<string | null>(null);
-  useEffect(() => {
-    const msg = pendingAutoSendRef.current;
-    if (msg && activeConvId && activePluginId && !isStreaming) {
-      pendingAutoSendRef.current = null;
-      // Small delay to let the plugin iframe mount and send PLUGIN_READY
-      const timer = setTimeout(() => {
-        handleSendMessage(msg);
-      }, 900);
-      return () => clearTimeout(timer);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConvId, activePluginId, isStreaming]);
+  // (pendingAutoSendRef removed — auto-send now fires inside activatePlugin.onSuccess
+  //  so the DB is confirmed updated before the message reaches the server)
 
   // ── Send message ──────────────────────────────────────────────────────────
-  const handleSendMessage = useCallback(async (overrideContent?: string) => {
+  // convIdOverride: used by quick-start to pass the exact new conv ID (avoids stale closure)
+  const handleSendMessage = useCallback(async (overrideContent?: string, convIdOverride?: string) => {
     const content = (overrideContent ?? inputValue).trim();
-    if (!activeConvId || isStreaming || !content) return;
+    const convId = convIdOverride ?? activeConvId;
+    if (!convId || isStreaming || !content) return;
 
     if (!overrideContent) setInputValue("");
     const optimisticId = `opt-${Date.now()}`;
@@ -560,7 +573,7 @@ export default function Chat() {
       const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: activeConvId, message: content }),
+        body: JSON.stringify({ conversationId: convId, message: content }),
         signal: controller.signal,
       });
 
@@ -652,7 +665,7 @@ export default function Chat() {
             setActiveToolName(null);
           } else if (event.type === "complete") {
             startHistoryTransition(() => {
-              utils.conversations.get.invalidate({ id: activeConvId });
+              utils.conversations.get.invalidate({ id: convId });
               utils.conversations.list.invalidate();
             });
             setStreamingContent("");
@@ -673,6 +686,8 @@ export default function Chat() {
       setActiveToolName(null);
     }
   }, [activeConvId, isStreaming, inputValue, addOptimisticMessage, startHistoryTransition, utils, pluginSchema?.name]);
+  // Keep ref in sync with latest handleSendMessage
+  handleSendMessageRef.current = handleSendMessage;
 
   // Chess auto-play: silently trigger the AI to play Black after a manual White move
   const triggerAiMove = useCallback(async (lastMove: string) => {
@@ -844,12 +859,25 @@ export default function Chat() {
               <PluginPicker
                 conversationId={activeConvId}
                 activePluginId={activePluginId}
-                onActivated={() => {
-                  utils.conversations.get.invalidate({ id: activeConvId });
+                onActivated={(pluginId) => {
+                  utils.conversations.get.invalidate({ id: activeConvId ?? undefined });
                   utils.conversations.list.invalidate();
+                  // Req 6: AI acknowledges the switch after DB confirms new plugin
+                  const pluginNames: Record<string, string> = {
+                    chess: "Chess",
+                    timeline: "Timeline Builder",
+                    "artifact-studio": "Artifact Studio",
+                  };
+                  const name = pluginNames[pluginId] ?? pluginId;
+                  setTimeout(() => {
+                    handleSendMessageRef.current?.(
+                      `I just switched to ${name}. Please acknowledge the switch and guide me on what to do next.`,
+                      activeConvId ?? undefined,
+                    );
+                  }, 800);
                 }}
                 onDeactivated={() => {
-                  utils.conversations.get.invalidate({ id: activeConvId });
+                  utils.conversations.get.invalidate({ id: activeConvId ?? undefined });
                   utils.conversations.list.invalidate();
                 }}
                 disabled={isStreaming}
@@ -1096,7 +1124,7 @@ function EmptyState({
         {QUICK_STARTERS.map(qs => (
           <button
             key={qs.label}
-            onClick={() => { onNew(); onQuickStart?.(qs.label); }}
+            onClick={() => { onQuickStart?.(qs.label); }}
             disabled={isCreating}
             className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-card/60 hover:bg-card hover:border-primary/30 text-left text-xs text-muted-foreground hover:text-foreground transition-all duration-150 disabled:opacity-50"
           >

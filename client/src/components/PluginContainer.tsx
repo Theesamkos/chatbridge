@@ -281,10 +281,63 @@ const PluginContainer = forwardRef<PluginContainerHandle, PluginContainerProps>(
       };
       iframe.addEventListener("load", handleLoad);
 
+      // ── API_PROXY_REQUEST handler ─────────────────────────────────────────
+      // The iframe runs without allow-same-origin, so it cannot fetch() directly.
+      // Plugins post API_PROXY_REQUEST messages; we fetch from the parent frame
+      // (which has full same-origin access) and reply with API_PROXY_RESPONSE.
+      const handleProxyRequest = async (event: MessageEvent) => {
+        if (!event.data || event.data.type !== 'API_PROXY_REQUEST') return;
+        const msg = event.data as {
+          type: string;
+          requestId: string;
+          url: string;
+          method?: string;
+          body?: string | null;
+          headers?: Record<string, string> | null;
+          sessionId?: string;
+          pluginId?: string;
+        };
+        const { requestId, url, method = 'GET', body, headers } = msg;
+        // Echo back sessionId/pluginId so plugins can match responses
+        const reqSessionId = msg.sessionId;
+        const reqPluginId = msg.pluginId;
+        try {
+          const fetchOptions: RequestInit = {
+            method,
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', ...(headers ?? {}) },
+          };
+          if (body) fetchOptions.body = body;
+          const res = await fetch(url, fetchOptions);
+          const data = await res.json();
+          iframe.contentWindow?.postMessage({
+            type: 'API_PROXY_RESPONSE',
+            requestId,
+            sessionId: reqSessionId,
+            pluginId: reqPluginId,
+            ok: res.ok,
+            status: res.status,
+            data,
+          }, '*');
+        } catch (err) {
+          iframe.contentWindow?.postMessage({
+            type: 'API_PROXY_RESPONSE',
+            requestId,
+            sessionId: reqSessionId,
+            pluginId: reqPluginId,
+            ok: false,
+            status: 0,
+            data: null,
+          }, '*');
+        }
+      };
+      window.addEventListener('message', handleProxyRequest);
+
       return () => {
         destroyed = true;
         clearTimeout(readyTimeout);
         iframe.removeEventListener("load", handleLoad);
+        window.removeEventListener('message', handleProxyRequest);
         bridge.destroy();
         bridgeRef.current = null;
         pluginReadyRef.current = false;
