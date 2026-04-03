@@ -722,6 +722,7 @@ let registeredOrigin = null;
 let currentTopic = null;
 let currentEvents = [];   // student's current ordering
 let correctOrder = [];    // sorted by year (ground truth)
+let liveTopicsCache = {}; // live events fetched from Wikipedia via server
 let submitted = false;
 let attemptCount = 0;
 let lastValidationResult = null;
@@ -937,8 +938,27 @@ function onDrop(e) {
 }
 
 // ─── Activity logic ───────────────────────────────────────────────────────────
+// ─── Live API fetch (Wikipedia via server) ─────────────────────────────────────────────────
+async function fetchLiveTopicEvents(topicName) {
+  if (liveTopicsCache[topicName]) return liveTopicsCache[topicName];
+  try {
+    const url = '/api/trpc/timeline.getEvents?batch=1&input=' +
+      encodeURIComponent(JSON.stringify({ '0': { json: { topic: topicName } } }));
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const result = data?.[0]?.result?.data?.json;
+    if (!result || !Array.isArray(result.events) || result.events.length < 4) return null;
+    liveTopicsCache[topicName] = result.events;
+    return result.events;
+  } catch (e) {
+    console.warn('[Timeline] Live fetch failed for "' + topicName + '":', e);
+    return null;
+  }
+}
+
 function loadTopic(topicName, restoredOrder) {
-  const events = TOPICS[topicName];
+  const events = liveTopicsCache[topicName] || TOPICS[topicName];
   if (!events) return false;
 
   currentTopic = topicName;
@@ -972,16 +992,20 @@ function loadTopic(topicName, restoredOrder) {
   return true;
 }
 
-function handleLoadTopic() {
+async function handleLoadTopic() {
   const sel = document.getElementById('topic-select').value;
   if (!sel) {
     document.getElementById('status-msg').textContent = 'Please select a topic first.';
     return;
   }
+  setStatus('Loading events…', '');
+  const liveEvents = await fetchLiveTopicEvents(sel);
+  if (liveEvents) liveTopicsCache[sel] = liveEvents;
   attemptCount = 0;
   const ok = loadTopic(sel, null);
   if (ok) {
-    setStatus('Drag the cards to put them in the correct order.', '');
+    const isLive = !!(liveTopicsCache[sel] && liveTopicsCache[sel] !== TOPICS[sel]);
+    setStatus('Drag the cards to put them in the correct order.' + (isLive ? ' • Live data' : ''), '');
     sendStateUpdate();
   }
 }
@@ -1148,25 +1172,42 @@ function handleToolInvoke(msg) {
           sendToolResult(toolCallId, { error: 'Missing required argument: topic' }, true);
           return;
         }
-        if (!TOPICS[topic]) {
-          const available = Object.keys(TOPICS).join(', ');
+        if (!TOPICS[topic] && !liveTopicsCache[topic]) {
           sendToolResult(toolCallId, {
             error: 'Topic not found: ' + topic,
             availableTopics: Object.keys(TOPICS),
           }, true);
           return;
         }
-        attemptCount = 0;
-        loadTopic(topic, null);
-        setStatus('Topic loaded. Drag the cards to arrange them.', '');
-        sendStateUpdate();
-        sendToolResult(toolCallId, {
-          topic,
-          eventCount: currentEvents.length,
-          events: currentEvents.map(e => ({ id: e.id, title: e.title, description: e.description })),
-          message: 'Timeline loaded for "' + topic + '". The student can now arrange ' + currentEvents.length + ' events.',
-        }, false);
-        break;
+        // Fetch live events from Wikipedia (via server), fall back to curated
+        fetchLiveTopicEvents(topic).then(function(liveEvents) {
+          if (liveEvents) liveTopicsCache[topic] = liveEvents;
+          attemptCount = 0;
+          loadTopic(topic, null);
+          setStatus('Topic loaded. Drag the cards to arrange them.', '');
+          sendStateUpdate();
+          sendToolResult(toolCallId, {
+            topic,
+            source: liveEvents ? 'wikipedia' : 'curated',
+            eventCount: currentEvents.length,
+            events: currentEvents.map(e => ({ id: e.id, title: e.title, description: e.description })),
+            message: 'Timeline loaded for "' + topic + '". The student can now arrange ' + currentEvents.length + ' events.',
+          }, false);
+        }).catch(function(err) {
+          console.error('[Timeline] load_timeline error:', err);
+          attemptCount = 0;
+          loadTopic(topic, null);
+          setStatus('Topic loaded. Drag the cards to arrange them.', '');
+          sendStateUpdate();
+          sendToolResult(toolCallId, {
+            topic,
+            source: 'curated',
+            eventCount: currentEvents.length,
+            events: currentEvents.map(e => ({ id: e.id, title: e.title, description: e.description })),
+            message: 'Timeline loaded for "' + topic + '" (curated). The student can now arrange ' + currentEvents.length + ' events.',
+          }, false);
+        });
+        return; // async — do not fall through to break
       }
 
       case 'validate_arrangement': {
@@ -1201,6 +1242,7 @@ function handleToolInvoke(msg) {
           loaded: true,
           ...buildState(),
           availableTopics: Object.keys(TOPICS),
+          liveTopicsLoaded: Object.keys(liveTopicsCache),
         }, false);
         break;
       }

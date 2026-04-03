@@ -217,3 +217,10 @@
 - [x] Add toggle_assistance to chess seed tool schemas + re-seeded DB
 - [x] Update contextAssembly chess system prompt to describe assistance toggle
 - [x] 152/152 tests passing, 0 TS errors
+
+## Timeline: Wire Wikipedia On This Day API (external, free, no key)
+- [x] Build server/routers/timeline.ts calling Wikipedia REST API with curated fallback
+- [x] Register timelineRouter in server/routers.ts
+- [x] Update timeline iframe: fetchLiveTopicEvents() fetches from server, loadTopic uses live cache
+- [x] handleLoadTopic and load_timeline tool both try live first, fall back to curated
+- [x] 152/152 tests passing, 0 TS errors
