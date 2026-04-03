@@ -17,6 +17,7 @@ import {
   BookOpen,
   Check,
   Copy,
+  Home,
   LayoutDashboard,
   Loader2,
   Menu,
@@ -850,6 +851,17 @@ export default function Chat() {
           </div>
 
           <div className="flex items-center gap-1">
+            {/* Home link */}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 px-3 text-xs font-medium text-muted-foreground hover:text-foreground hidden sm:flex items-center gap-1.5"
+              onClick={() => setLocation('/')}
+              aria-label="Go to homepage"
+            >
+              <Home className="h-3.5 w-3.5" />
+              Home
+            </Button>
             {/* Teach Me badge */}
             {activePluginId === "chess" && (
               <Badge variant="secondary" className="text-xs hidden sm:flex" id="teach-me-badge" />
