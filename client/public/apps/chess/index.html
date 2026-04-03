@@ -117,6 +117,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);
 .btn.danger{border-color:rgba(239,68,68,0.3);color:#ef4444}
 .btn.danger:hover{background:rgba(239,68,68,0.1);border-color:#ef4444}
 .btn.teach-active{border-color:var(--gold);color:var(--gold);background:var(--gold-dim)}
+.diff-row{display:flex;gap:4px}
+.diff-row .btn{flex:1;font-size:12px;padding:7px 4px}
+.btn.diff-active{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
 .btn-row{display:flex;gap:6px}.btn-row .btn{flex:1}
 #teach-badge{display:none;align-items:center;gap:6px;padding:6px 10px;
   background:var(--gold-dim);border:1px solid rgba(245,158,11,0.3);border-radius:6px;
@@ -203,6 +206,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
         Assistance: ON
       </button>
+      <div class="diff-row">
+        <button class="btn diff-active" id="diff-beginner" onclick="setDifficulty('beginner')">Beginner</button>
+        <button class="btn" id="diff-advanced" onclick="setDifficulty('advanced')">Advanced</button>
+        <button class="btn" id="diff-grandmaster" onclick="setDifficulty('grandmaster')">Grandmaster</button>
+      </div>
       <button class="btn danger" onclick="handleResign()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
         Resign
@@ -237,6 +245,7 @@ let lastMoveSquares = [];
 let gameOver = false;
 let teachMeMode = false;
 let assistanceMode = true; // shows legal move dots; toggled via chat or button
+let difficulty = 'beginner'; // 'beginner' | 'advanced' | 'grandmaster'
 let sessionId = null;
 let pluginId = 'chess';
 let conversationId = null;
@@ -276,7 +285,7 @@ function buildChessState(partial) {
     moveCount: Math.ceil(chess.history().length / 2),
     isCheck: chess.in_check(), isCheckmate: chess.in_checkmate(),
     isStalemate: chess.in_stalemate(), isDraw: chess.in_draw(),
-    teachMeMode, assistanceMode, partial: !!partial,
+    teachMeMode, assistanceMode, difficulty, partial: !!partial,
   };
 }
 function getGameStatus() {
@@ -531,6 +540,19 @@ function toggleTeachMe() {
   sendStateUpdate();
 }
 
+function setDifficulty(level) {
+  if (!['beginner','advanced','grandmaster'].includes(level)) return;
+  difficulty = level;
+  updateDifficultyUI();
+  sendStateUpdate();
+}
+function updateDifficultyUI() {
+  ['beginner','advanced','grandmaster'].forEach(d => {
+    const btn = document.getElementById('diff-' + d);
+    if (btn) btn.classList.toggle('diff-active', d === difficulty);
+  });
+}
+
 // ─── Plugin messaging ─────────────────────────────────────────────────────
 function sendMsg(msg) { if (registeredOrigin) window.parent.postMessage(msg, registeredOrigin); }
 function sendStateUpdate(partial) {
@@ -660,9 +682,10 @@ window.addEventListener('message', function(event) {
         const rs = msg.restoredState;
         if (['checkmate','stalemate','draw','resignation'].includes(rs.status)) gameOver = true;
         if (typeof rs.teachMeMode === 'boolean') teachMeMode = rs.teachMeMode;
+        if (typeof rs.difficulty === 'string' && ['beginner','advanced','grandmaster'].includes(rs.difficulty)) difficulty = rs.difficulty;
       } catch(e) { chess = new Chess(); }
     } else { chess = new Chess(); }
-    renderBoard(); updateInfo();
+    renderBoard(); updateInfo(); updateDifficultyUI();
     sendMsg({ type:'PLUGIN_READY', version:1, sessionId, pluginId });
     return;
   }
