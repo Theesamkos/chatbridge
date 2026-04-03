@@ -1276,14 +1276,16 @@ function handleToolInvoke(msg) {
 // ─── Message listener ─────────────────────────────────────────────────────────
 window.addEventListener('message', function(event) {
   // Security: on INIT capture origin; afterwards validate it
-  if (registeredOrigin && event.origin !== registeredOrigin) return;
+  if (registeredOrigin && registeredOrigin !== '*' && event.origin !== registeredOrigin) return;
 
   const msg = event.data;
   if (!msg || typeof msg !== 'object') return;
   if (msg.version !== 1) return;
 
   if (msg.type === 'INIT') {
-    registeredOrigin = event.origin;
+    // Sandboxed iframes without allow-same-origin report event.origin as "null".
+    // Use '*' so the incoming message filter accepts real parent messages.
+    registeredOrigin = (event.origin === 'null' || !event.origin) ? '*' : event.origin;
     sessionId        = msg.sessionId;
     pluginId         = msg.pluginId || 'timeline';
     conversationId   = msg.conversationId;
@@ -1308,7 +1310,8 @@ window.addEventListener('message', function(event) {
   }
 
   // Validate all subsequent messages
-  if (!registeredOrigin || event.origin !== registeredOrigin) return;
+  if (!registeredOrigin) return;
+  if (registeredOrigin !== '*' && event.origin !== registeredOrigin) return;
   if (msg.sessionId !== sessionId) return;
   if (msg.pluginId !== pluginId) return;
 

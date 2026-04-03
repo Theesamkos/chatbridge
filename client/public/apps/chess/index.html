@@ -633,11 +633,14 @@ function handleToolInvoke(msg) {
 
 // ─── Message listener ─────────────────────────────────────────────────────
 window.addEventListener('message', function(event) {
-  if (registeredOrigin && event.origin !== registeredOrigin) return;
+  if (registeredOrigin && registeredOrigin !== '*' && event.origin !== registeredOrigin) return;
   const msg = event.data;
   if (!msg || typeof msg !== 'object' || msg.version !== 1) return;
   if (msg.type === 'INIT') {
-    registeredOrigin = event.origin;
+    // Sandboxed iframes without allow-same-origin report event.origin as the
+    // string "null". postMessage(msg, "null") is rejected by browsers, so we
+    // use "*" instead — the PluginBridge already accepts null-origin messages.
+    registeredOrigin = (event.origin === 'null' || !event.origin) ? '*' : event.origin;
     sessionId = msg.sessionId; pluginId = msg.pluginId || 'chess'; conversationId = msg.conversationId;
     if (msg.restoredState && msg.restoredState.fen && isValidFen(msg.restoredState.fen)) {
       try {
@@ -651,7 +654,8 @@ window.addEventListener('message', function(event) {
     sendMsg({ type:'PLUGIN_READY', version:1, sessionId, pluginId });
     return;
   }
-  if (!registeredOrigin || event.origin !== registeredOrigin) return;
+  if (!registeredOrigin) return;
+  if (registeredOrigin !== '*' && event.origin !== registeredOrigin) return;
   if (msg.sessionId !== sessionId || msg.pluginId !== pluginId) return;
   if (msg.type === 'TOOL_INVOKE') handleToolInvoke(msg);
   else if (msg.type === 'PING') sendMsg({ type:'PONG', version:1, sessionId, pluginId });

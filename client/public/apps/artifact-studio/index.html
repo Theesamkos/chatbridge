@@ -1469,7 +1469,7 @@
     if (!initialized) {
       if (!event.data || event.data.type !== 'INIT' || event.data.version !== 1) return;
     } else {
-      if (event.origin !== parentOrigin) return;
+      if (parentOrigin !== '*' && event.origin !== parentOrigin) return;
     }
 
     const msg = event.data;
@@ -1494,7 +1494,9 @@
   });
 
   function handleInit(origin, msg) {
-    parentOrigin = origin;
+    // Sandboxed iframes without allow-same-origin report event.origin as "null".
+    // Use '*' so the incoming message filter accepts real parent messages.
+    parentOrigin = (origin === 'null' || !origin) ? '*' : origin;
     sessionId = msg.sessionId;
     pluginId = msg.pluginId || pluginId;
     conversationId = msg.conversationId;
@@ -1658,24 +1660,59 @@
     }
   }
 
+   // ── API proxy via postMessage (sandboxed iframe cannot fetch directly) ────
+  const pendingProxyRequests = new Map();
+  let proxyRequestCounter = 0;
+
+  function proxyFetch(url) {
+    return new Promise((resolve, reject) => {
+      const requestId = 'proxy-' + (++proxyRequestCounter);
+      const timeout = setTimeout(() => {
+        pendingProxyRequests.delete(requestId);
+        reject(new Error('Proxy request timed out'));
+      }, 15000);
+      pendingProxyRequests.set(requestId, { resolve, reject, timeout });
+      window.parent.postMessage({
+        type: 'API_PROXY_REQUEST',
+        version: 1,
+        sessionId,
+        pluginId,
+        requestId,
+        url,
+        method: 'GET',
+      }, '*');
+    });
+  }
+
+  // Handle proxy responses from parent
+  window.addEventListener('message', function(event) {
+    if (!event.data || event.data.type !== 'API_PROXY_RESPONSE') return;
+    const msg = event.data;
+    if (msg.sessionId !== sessionId || msg.pluginId !== pluginId) return;
+    const pending = pendingProxyRequests.get(msg.requestId);
+    if (!pending) return;
+    clearTimeout(pending.timeout);
+    pendingProxyRequests.delete(msg.requestId);
+    if (msg.ok) {
+      pending.resolve(msg.data);
+    } else {
+      pending.reject(new Error('Proxy error ' + msg.status));
+    }
+  });
+
   // ── API calls ──────────────────────────────────────────────────────────────
   async function apiSearchArtifacts(query, dateRange, culturalContext, page) {
     const input = { query, page: page || 0 };
     if (dateRange) input.dateRange = dateRange;
     if (culturalContext) input.culturalContext = culturalContext;
     const url = '/api/trpc/artifacts.search?batch=1&input=' + encodeURIComponent(JSON.stringify({ '0': { json: input } }));
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const data = await proxyFetch(url);
     const result = data?.[0]?.result?.data?.json;
     return result ?? { artifacts: [], totalCount: 0, source: 'unavailable' };
   }
-
   async function apiGetArtifactDetail(id, source) {
     const url = '/api/trpc/artifacts.getDetail?batch=1&input=' + encodeURIComponent(JSON.stringify({ '0': { json: { id, source } } }));
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const data = await proxyFetch(url);
     return data?.[0]?.result?.data?.json ?? null;
   }
 
