@@ -16,12 +16,16 @@ export type PlatformMessage =
   | { type: "PING";        version: 1; sessionId: string; pluginId: string };
 
 export type PluginMessage =
-  | { type: "PLUGIN_READY";    version: 1; sessionId: string; pluginId: string }
-  | { type: "TOOL_RESULT";     version: 1; sessionId: string; pluginId: string; toolCallId: string; result: unknown; isError: boolean }
-  | { type: "STATE_UPDATE";    version: 1; sessionId: string; pluginId: string; state: unknown; partial: boolean }
-  | { type: "PLUGIN_COMPLETE"; version: 1; sessionId: string; pluginId: string; finalState: unknown; summary: string }
-  | { type: "PLUGIN_ERROR";    version: 1; sessionId: string; pluginId: string; error: string; fatal: boolean }
-  | { type: "PONG";            version: 1; sessionId: string; pluginId: string };
+  | { type: "PLUGIN_READY";       version: 1; sessionId: string; pluginId: string }
+  | { type: "TOOL_RESULT";        version: 1; sessionId: string; pluginId: string; toolCallId: string; result: unknown; isError: boolean }
+  | { type: "STATE_UPDATE";       version: 1; sessionId: string; pluginId: string; state: unknown; partial: boolean }
+  | { type: "PLUGIN_COMPLETE";    version: 1; sessionId: string; pluginId: string; finalState: unknown; summary: string }
+  | { type: "PLUGIN_ERROR";       version: 1; sessionId: string; pluginId: string; error: string; fatal: boolean }
+  | { type: "PONG";               version: 1; sessionId: string; pluginId: string }
+  | { type: "API_PROXY_REQUEST";  version: 1; sessionId: string; pluginId: string; requestId: string; url: string; method?: string; body?: unknown };
+
+export type PlatformProxyMessage =
+  | { type: "API_PROXY_RESPONSE"; version: 1; sessionId: string; pluginId: string; requestId: string; ok: boolean; status: number; data: unknown };
 
 const PROTOCOL_VERSION = 1;
 const TOOL_RESULT_TIMEOUT_MS = 10_000;
@@ -53,6 +57,12 @@ export class PluginBridge {
 
   /** Number of errors seen from this plugin (circuit-breaker counter). */
   private errorCount = 0;
+
+  /** requestId → { resolve, reject } for API proxy calls */
+  private pendingProxyRequests = new Map<
+    string,
+    { resolve: (data: unknown) => void; reject: (e: Error) => void }
+  >();
 
   private readonly messageHandler: (event: MessageEvent) => void;
 
@@ -204,9 +214,51 @@ export class PluginBridge {
         // Heartbeat acknowledged — no action needed
         break;
 
+      case "API_PROXY_REQUEST": {
+        // The sandboxed iframe cannot fetch() directly — proxy through the parent.
+        // Only allow relative /api/* paths to prevent SSRF.
+        const proxyMsg = msg as { requestId: string; url: string; method?: string; body?: unknown };
+        const { requestId, url: proxyUrl, method = "GET", body } = proxyMsg;
+        if (!proxyUrl.startsWith("/api/")) {
+          this.postProxyResponse(requestId, false, 403, { error: "Forbidden: only /api/* paths allowed" });
+          break;
+        }
+        void fetch(proxyUrl, {
+          method,
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          credentials: "include",
+        })
+          .then(async (r) => {
+            const data = await r.json().catch(() => null);
+            this.postProxyResponse(requestId, r.ok, r.status, data);
+          })
+          .catch((err) => {
+            this.postProxyResponse(requestId, false, 0, { error: String(err) });
+          });
+        break;
+      }
+
       default:
         void this.reportProtocolViolation("UNKNOWN_MESSAGE_TYPE", { type: msg.type });
     }
+  }
+
+  private postProxyResponse(requestId: string, ok: boolean, status: number, data: unknown): void {
+    const targetOrigin = this.registeredOrigin === window.location.origin ? "*" : this.registeredOrigin;
+    this.iframe.contentWindow?.postMessage(
+      {
+        type: "API_PROXY_RESPONSE",
+        version: PROTOCOL_VERSION,
+        sessionId: this.sessionId,
+        pluginId: this.pluginId,
+        requestId,
+        ok,
+        status,
+        data,
+      } satisfies PlatformProxyMessage,
+      targetOrigin,
+    );
   }
 
   private post(msg: PlatformMessage): void {
